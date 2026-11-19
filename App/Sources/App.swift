@@ -22,7 +22,7 @@ struct PersistentReminderApp: App {
                 .tint(Theme.orange)
         }
         .onChange(of: phase) { _, new in
-            if new == .active { store.refresh() }
+            if new == .active { store.refresh(); Nudger.openPendingShortcut() }
         }
     }
 }

@@ -26,8 +26,11 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
     public var repeats: Repeat
     public var nudgeMinutes: Int
     public var created: Date
+    /// The name of an Apple Shortcut to run from this reminder (press and hold its nudge or its row), or nil.
+    public var shortcut: String?
 
-    public init(id: UUID = UUID(), title: String, due: Date, repeats: Repeat = .never, nudgeMinutes: Int = 5, created: Date = Date()) {
+    public init(id: UUID = UUID(), title: String, due: Date, repeats: Repeat = .never, nudgeMinutes: Int = 5, created: Date = Date(), shortcut: String? = nil) {
+        self.shortcut = Reminder.cleanShortcut(shortcut)
         self.id = id
         self.title = title
         self.due = due
@@ -38,7 +41,7 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
 
     // Tolerant reading: a field a later version adds never makes an older file unreadable, and a
     // missing field gets a sensible value instead of losing the reminder.
-    enum CodingKeys: String, CodingKey { case id, title, due, repeats, nudgeMinutes, created }
+    enum CodingKeys: String, CodingKey { case id, title, due, repeats, nudgeMinutes, created, shortcut }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = (try? c.decode(UUID.self, forKey: .id)) ?? UUID()
@@ -47,6 +50,29 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
         repeats = (try? c.decode(Repeat.self, forKey: .repeats)) ?? .never
         nudgeMinutes = (try? c.decode(Int.self, forKey: .nudgeMinutes)) ?? 5
         created = (try? c.decode(Date.self, forKey: .created)) ?? Date()
+        shortcut = Reminder.cleanShortcut(try? c.decode(String.self, forKey: .shortcut))
+    }
+
+    /// A shortcut name without spaces around it; an empty one means none.
+    public static func cleanShortcut(_ name: String?) -> String? {
+        let t = (name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return t.isEmpty ? nil : t
+    }
+
+    /// The link that makes the Shortcuts app run this reminder's shortcut, or nil when it has none.
+    public var shortcutURL: URL? { shortcut.flatMap(Reminder.shortcutURL(for:)) }
+
+    public static func shortcutURL(for name: String) -> URL? {
+        guard let clean = cleanShortcut(name) else { return nil }
+        var parts = URLComponents()
+        parts.scheme = "shortcuts"
+        parts.host = "run-shortcut"
+        parts.queryItems = [URLQueryItem(name: "name", value: clean)]
+        // URLComponents leaves "&" and "+" as they are inside a value; the Shortcuts app needs them encoded.
+        parts.percentEncodedQuery = parts.percentEncodedQuery?
+            .replacingOccurrences(of: "+", with: "%2B")
+            .replacingOccurrences(of: "&", with: "%26")
+        return parts.url
     }
 
     /// Minutes between two nudges, never less than one.

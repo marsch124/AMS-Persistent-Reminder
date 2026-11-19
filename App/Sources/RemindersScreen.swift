@@ -108,6 +108,7 @@ struct RemindersScreen: View {
                     }
                     .contentShape(Rectangle())
                     .onTapGesture { editing = .edit(r) }
+                    .onLongPressGesture(minimumDuration: 0.5) { runShortcut(r) }
                     .listRowBackground(mark ? Theme.waitingRow : Color(.secondarySystemGroupedBackground))
                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                         Button { tickWithJoy(r.id) } label: { Text("Done") }.tint(Theme.green)
@@ -130,6 +131,13 @@ struct RemindersScreen: View {
     private func tickWithJoy(_ id: UUID) {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         withAnimation { store.tick(id) }
+    }
+
+    /// Press and hold a row: its shortcut runs (rows without one stay still).
+    private func runShortcut(_ r: Reminder) {
+        guard let url = r.shortcutURL else { return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        UIApplication.shared.open(url)
     }
 
     private func openNotificationSettings() {
@@ -184,6 +192,11 @@ struct ReminderRow: View {
                 .foregroundStyle(waiting ? Theme.orange : Color.secondary)
             }
             Spacer(minLength: 6)
+            if reminder.shortcut != nil {
+                ControlMarkView(.play, size: 14, colour: Theme.purple)
+                    .accessibilityLabel("Press and hold to run \(reminder.shortcut ?? "")")
+                    .accessibilityIdentifier("shortcut-mark-\(reminder.title)")
+            }
             Text(timeText)
                 .font(.callout.weight(.semibold)).monospacedDigit()
                 .foregroundStyle(colour)

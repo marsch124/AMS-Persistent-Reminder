@@ -122,4 +122,18 @@ final class ReminderCoreTests: XCTestCase {
         list.forgetDone(olderThan: 30, at: d(19, 9), calendar: cal)
         XCTAssertEqual(list.done.map(\.reminder.title), ["new"])
     }
+
+    // 0.2: a reminder can run an Apple Shortcut.
+    func testShortcutLinkAndOldFiles() throws {
+        let r = Reminder(title: "Call Andreas", due: Date(), shortcut: "  Call Andreas Bjurling ")
+        XCTAssertEqual(r.shortcut, "Call Andreas Bjurling")
+        XCTAssertEqual(r.shortcutURL?.absoluteString, "shortcuts://run-shortcut?name=Call%20Andreas%20Bjurling")
+        XCTAssertEqual(Reminder.shortcutURL(for: "A & B+C")?.absoluteString, "shortcuts://run-shortcut?name=A%20%26%20B%2BC")
+        XCTAssertNil(Reminder(title: "x", due: Date(), shortcut: "   ").shortcutURL)
+        // A list saved by 0.1 (no shortcut field) still opens, and a saved shortcut comes back.
+        let old = #"{"id":"7C9A2D1E-0000-4000-8000-000000000001","title":"Old","due":0,"repeats":"never","nudgeMinutes":5,"created":0}"#
+        XCTAssertNil(try JSONDecoder().decode(Reminder.self, from: Data(old.utf8)).shortcut)
+        let back = try JSONDecoder().decode(Reminder.self, from: JSONEncoder().encode(r))
+        XCTAssertEqual(back.shortcut, "Call Andreas Bjurling")
+    }
 }

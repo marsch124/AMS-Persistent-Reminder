@@ -36,6 +36,23 @@ final class ReminderUITests: XCTestCase {
         XCTAssertTrue(app.buttons["tick-Test reminder"].waitForExistence(timeout: 5))
     }
 
+    /// 0.2: a reminder with a shortcut shows the play mark on its row.
+    func testShortcutOnAReminder() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting"]
+        app.launch()
+        app.buttons["new-reminder"].tap()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "title-field").firstMatch.waitForExistence(timeout: 5))
+        app.typeText("Call Andreas\n")
+        let field = app.textFields["shortcut-field"]
+        app.swipeUp()
+        field.tap()
+        field.typeText("Call Andreas Bjurling")
+        XCTAssertTrue(app.buttons["try-shortcut"].waitForExistence(timeout: 5))
+        app.buttons["save"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["shortcut-mark-Call Andreas"].waitForExistence(timeout: 5))
+    }
+
     /// The heart of the app: a reminder whose time has come pops up as a nudge.
     /// Local only, on request (NUDGE_TEST=1): the simulator did not show the permission question on 19 Nov 2026.
     func testANudgePopsUp() throws {

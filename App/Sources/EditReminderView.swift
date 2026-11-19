@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import AMSIcons
 import ReminderCore
 
@@ -13,6 +14,7 @@ struct EditReminderView: View {
     @State private var due = Date()
     @State private var repeats: Repeat = .never
     @State private var nudge = 5
+    @State private var shortcut = ""
     @State private var pickingDay = false
     @State private var askDelete = false
     @FocusState private var titleFocused: Bool
@@ -73,6 +75,27 @@ struct EditReminderView: View {
                     }
                     .font(.footnote).foregroundStyle(.secondary)
 
+                    heading("Shortcut")
+                    HStack(spacing: 8) {
+                        TextField("Name of a shortcut (optional)", text: $shortcut)
+                            .textInputAutocapitalization(.words)
+                            .autocorrectionDisabled()
+                            .submitLabel(.done)
+                            .accessibilityIdentifier("shortcut-field")
+                        if let url = Reminder.shortcutURL(for: shortcut) {
+                            Button("Try it") { UIApplication.shared.open(url) }
+                                .buttonStyle(.borderedProminent).tint(Theme.purple).controlSize(.small)
+                                .accessibilityIdentifier("try-shortcut")
+                        }
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 10)
+                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                    HStack(spacing: 6) {
+                        ControlMarkView(.play, size: 14, colour: Theme.purple)
+                        Text("Press and hold the nudge or the row to run it.")
+                    }
+                    .font(.footnote).foregroundStyle(.secondary)
+
                     if case .edit = target {
                         Button(role: .destructive) { askDelete = true } label: {
                             Text("Delete reminder").frame(maxWidth: .infinity)
@@ -127,6 +150,7 @@ struct EditReminderView: View {
             due = r.due
             repeats = r.repeats
             nudge = r.nudgeMinutes
+            shortcut = r.shortcut ?? ""
         }
         pickingDay = dayChoice == .other
     }
@@ -138,12 +162,13 @@ struct EditReminderView: View {
         let due = self.due < Date() ? Date().addingTimeInterval(5) : self.due
         switch target {
         case .new:
-            store.add(Reminder(title: text, due: due, repeats: repeats, nudgeMinutes: nudge))
+            store.add(Reminder(title: text, due: due, repeats: repeats, nudgeMinutes: nudge, shortcut: shortcut))
         case .edit(var r):
             r.title = text
             r.due = due
             r.repeats = repeats
             r.nudgeMinutes = nudge
+            r.shortcut = Reminder.cleanShortcut(shortcut)
             store.update(r)
         }
         dismiss()
