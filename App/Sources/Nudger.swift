@@ -128,14 +128,23 @@ enum Nudger {
 final class NudgeDelegate: NSObject, UNUserNotificationCenterDelegate {
     static let shared = NudgeDelegate()
 
-    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        [.banner, .list, .sound]
+    // The completion-handler forms, answered on the main thread. The async forms (used up to 0.3) let iOS
+    // finish the answer on a background thread, which UIKit stops with a crash (TestFlight crash reports
+    // of 0.1 and 0.3, 19 Nov 2026: NudgeDelegate.userNotificationCenter(_:didReceive:) → abort).
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .list, .sound])
     }
 
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-        guard let text = response.notification.request.content.userInfo["reminder"] as? String,
-              let id = UUID(uuidString: text) else { return }
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+                                withCompletionHandler completionHandler: @escaping () -> Void) {
+        let text = response.notification.request.content.userInfo["reminder"] as? String
         let action = response.actionIdentifier
-        await MainActor.run { Nudger.answer(action, reminder: id) }
+        DispatchQueue.main.async {
+            if let text, let id = UUID(uuidString: text) {
+                MainActor.assumeIsolated { Nudger.answer(action, reminder: id) }
+            }
+            completionHandler()
+        }
     }
 }

@@ -18,10 +18,8 @@ struct ShortcutPicker: View {
                 Section {
                     Text("An iPhone app cannot read your shortcuts by itself. A small helper shortcut, “\(ShortcutNames.helperName)”, does it for the app. Do these two steps once:")
                         .font(.subheadline)
-                    step(1, "Add the helper", "Opens the Shortcuts app. Press “Add Shortcut” there.", id: "add-helper") { addHelper() }
+                    shareStep
                     step(2, "Load my shortcuts", "The Shortcuts app flashes up and comes back with your list. If iPhone asks, press Allow.", id: "load-shortcuts") { load() }
-                } footer: {
-                    shareHelper
                 }
             } else {
                 Section {
@@ -48,12 +46,10 @@ struct ShortcutPicker: View {
                     }
                     .listRowBackground(Theme.purpleFill)
                     .accessibilityIdentifier("load-shortcuts")
-                    Button { addHelper() } label: {
-                        Text("Add the helper again").frame(maxWidth: .infinity)
+                    if let file = helperFile {
+                        ShareLink(item: file) { Text("Add the helper again").frame(maxWidth: .infinity) }
+                            .accessibilityIdentifier("add-helper")
                     }
-                    .accessibilityIdentifier("add-helper")
-                } footer: {
-                    shareHelper
                 }
             }
         }
@@ -78,20 +74,25 @@ struct ShortcutPicker: View {
         .padding(.vertical, 2)
     }
 
-    /// Second way to add the helper: the share sheet offers the file to the Shortcuts app.
-    @ViewBuilder private var shareHelper: some View {
-        if let file = Bundle.main.url(forResource: ShortcutNames.helperName, withExtension: "shortcut") {
-            ShareLink(item: file) {
-                Text("Adding did not open Shortcuts? Share the helper file")
-                    .font(.footnote).foregroundStyle(Theme.purple)
-            }
-            .accessibilityIdentifier("share-helper")
-            .padding(.top, 6)
-        }
-    }
+    private var helperFile: URL? { Bundle.main.url(forResource: ShortcutNames.helperName, withExtension: "shortcut") }
 
-    private func addHelper() {
-        if let url = ShortcutNames.addHelperURL { UIApplication.shared.open(url) }
+    /// Step 1: the share sheet hands the signed helper file to the Shortcuts app. (0.3 opened a
+    /// shortcuts://import-shortcut link; iOS 27 refuses those: "The shortcut URL provided was invalid".)
+    @ViewBuilder private var shareStep: some View {
+        if let file = helperFile {
+            VStack(alignment: .leading, spacing: 6) {
+                ShareLink(item: file) {
+                    Text("1. Add the helper").bold().foregroundStyle(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 9)
+                        .background(Theme.purpleFill, in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("add-helper")
+                Text("Choose Shortcuts in the list that opens, then “Add Shortcut”. Already in your Shortcuts app (it comes over from your Mac)? Skip to step 2.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+            .padding(.vertical, 2)
+        }
     }
 
     private func load() {

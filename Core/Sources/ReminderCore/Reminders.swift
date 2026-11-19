@@ -312,16 +312,4 @@ public enum ShortcutNames {
         guard !words.isEmpty else { return names }
         return names.filter { n in words.allSatisfy { n.localizedCaseInsensitiveContains($0) } }
     }
-
-    /// The link that adds the helper: the Shortcuts app fetches the signed file from the public repo.
-    public static let helperFile = URL(string: "https://raw.githubusercontent.com/marsch124/AMS-Persistent-Reminder/main/App/Resources/AMS%20Reminder%20List.shortcut")!
-
-    public static var addHelperURL: URL? {
-        var p = URLComponents()
-        p.scheme = "shortcuts"
-        p.host = "import-shortcut"
-        p.queryItems = [URLQueryItem(name: "url", value: helperFile.absoluteString), URLQueryItem(name: "name", value: helperName)]
-        p.percentEncodedQuery = p.percentEncodedQuery?.replacingOccurrences(of: ":", with: "%3A").replacingOccurrences(of: "/", with: "%2F")
-        return p.url
-    }
 }

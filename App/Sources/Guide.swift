@@ -63,9 +63,8 @@ enum Guide {
         Part(title: "Shortcuts", text: [
             "You can type the name of a shortcut, or pick it from a list. Next to the Shortcut field is a purple “Pick” button. It opens “Your shortcuts”: the names of all your shortcuts, with a search field at the top. Tap one and it goes into the field.",
             "An iPhone app cannot look at your shortcuts by itself. So a small helper shortcut called “AMS Reminder List” does it for the app. You set it up once.",
-            "The first time, the list page says so and shows two steps. Step 1, “Add the helper”: it opens the Shortcuts app with the helper. Press “Add Shortcut” there. Step 2, “Load my shortcuts”: it runs the helper. The Shortcuts app flashes up for a moment and comes back with your list.",
+            "The first time, the list page says so and shows two steps. Step 1, “Add the helper”: the iPhone's share list opens. Choose Shortcuts in it, then press “Add Shortcut”. If “AMS Reminder List” is already in your Shortcuts app (it comes over by itself from your Mac), skip this step. Step 2, “Load my shortcuts”: it runs the helper. The Shortcuts app flashes up for a moment and comes back with your list.",
             "The first time it runs, your iPhone may ask whether “AMS Reminder List” may open AMS Reminder. Answer Allow, or Always Allow.",
-            "If adding the helper does not open the Shortcuts app, press “Share the helper file”. It offers the helper to the Shortcuts app.",
             "Your list is kept on the iPhone. After you make new shortcuts, press “Load again” at the bottom of the list page, or in Settings. The helper itself does not show up in the list.",
         ]),
         Part(title: "Ticking off and repeating", text: [
@@ -92,6 +91,12 @@ enum Guide {
     ]
 
     static let news: [Release] = [
+        Release(version: "0.3.1", date: "19 Nov 2026", items: [
+            "Fixed: the app could close by itself when you pressed a button on a nudge (Done, In 10 minutes, In 1 hour, This evening, Run). The button still did its job, but the app crashed while answering. This was there since 0.1 and is now fixed.",
+            "Fixed: “Add the helper” showed “Import Failed – the shortcut URL provided was invalid”, because Apple no longer lets an app add a shortcut by link. Now it opens the iPhone's share list: choose Shortcuts there, then “Add Shortcut”.",
+            "Changed: the helper “AMS Reminder List” is already in your Shortcuts on the Mac and comes over to your iPhone by itself, so you can go straight to “Load my shortcuts”.",
+            "Removed: the separate “Share the helper file” line, since “Add the helper” now does just that.",
+        ]),
         Release(version: "0.3", date: "19 Nov 2026", items: [
             "Changed: the strip “2 done · 1 to go today” at the top of the Reminders screen is gone. Instead a small round button sits at the bottom right, beside the orange “New reminder” button: the green ring of today with the number done inside it. Tap it to open Done, as you did with the strip. The date of today still stands under the big title.",
             "New: repeating reminders can wear a colour. When Repeat is Daily, Weekly or Monthly, a row of colour dots appears under Repeat: “no colour” (a crossed circle) and Red, Orange, Yellow, Green, Teal, Blue, Purple and Pink. The one you choose gets a ring.",

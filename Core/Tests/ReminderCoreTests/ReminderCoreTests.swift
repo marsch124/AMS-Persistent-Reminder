@@ -160,7 +160,6 @@ final class ReminderCoreTests: XCTestCase {
         XCTAssertEqual(names, ["air quality", "Call Andreas Bjurling", "Play music"])
         XCTAssertNil(ShortcutNames.read(URL(string: "https://example.com/shortcuts?names=x")!))
         XCTAssertEqual(ShortcutNames.filter(names ?? [], "andreas call"), ["Call Andreas Bjurling"])
-        XCTAssertEqual(ShortcutNames.addHelperURL?.absoluteString.hasPrefix("shortcuts://import-shortcut?url=https%3A%2F%2Fraw.githubusercontent.com"), true)
     }
 
     // 0.3: a repeating reminder can wear a colour; a one-off one never shows it; an unknown colour reads as none.

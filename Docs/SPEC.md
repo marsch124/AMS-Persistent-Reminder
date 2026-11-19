@@ -1,4 +1,4 @@
-# AMS Persistent Reminder: specification (0.3, build 4)
+# AMS Persistent Reminder: specification (0.3.1, build 5)
 
 Name under the icon: AMS Reminder. Bundle id: com.schabbauer.AMSPersistentReminder. iPhone only, portrait, iOS 17+. Positive, calm, Apple look; Apple's standard text sizes; compact rows.
 
@@ -75,7 +75,8 @@ Two tabs with large hand-drawn icons: Reminders (orange bell) and Settings (gear
 ### 6b. Your shortcuts (the list page)
 - Opened by the Pick button on the edit screen (`pick-shortcut`) or the Settings row (`settings-shortcuts`). A list (`shortcut-picker`) of the stored names with a search field at the top; each row `shortcut-option-<name>`; tapping one puts the name into the Shortcut field and closes the page. A name can still be typed by hand.
 - An iPhone app cannot read the user's shortcuts, so a helper shortcut "AMS Reminder List" does it. First time (empty list) the page says so and shows two steps: "1. Add the helper" (`add-helper`) and "2. Load my shortcuts" (`load-shortcuts`). Later "Load again" (bottom of the page, and in Settings) runs the helper again.
-- Add the helper: the app opens `shortcuts://import-shortcut` with the helper file from the public GitHub repository (https://raw.githubusercontent.com/marsch124/AMS-Persistent-Reminder/main/App/Resources/AMS%20Reminder%20List.shortcut); the Shortcuts app asks the user to press "Add Shortcut". Fallback if it does not open: "Share the helper file" (`share-helper`) offers the bundled file to the Shortcuts app through the share sheet.
+- Add the helper (`add-helper`): a share sheet with the bundled, signed file `AMS Reminder List.shortcut`; the user chooses Shortcuts, then "Add Shortcut". (0.3 opened `shortcuts://import-shortcut?url=…`; iOS 27 answers "The shortcut URL provided was invalid", so 0.3.1 dropped it, and the separate `share-helper` line with it.) The helper also syncs from the Mac's Shortcuts through iCloud.
+- Nudge buttons are answered with the completion-handler delegate methods on the main thread (0.3.1). The async forms crashed: iOS finished them on a background thread and UIKit aborted (TestFlight crash reports, 0.1 and 0.3).
 - Load: the app runs the helper by `shortcuts://run-shortcut?name=AMS%20Reminder%20List`. The Shortcuts app flashes up, collects the names and opens the link back `amsreminder://shortcuts?names=<one name per line, encoded>`. The app stores them sorted A-Z, without "AMS Reminder List", and shows the list. The first time, iOS may ask whether "AMS Reminder List" may open AMS Reminder (Allow / Always Allow).
 - The helper file `App/Resources/AMS Reminder List.shortcut` is built and signed by `python3 Tools/make-helper-shortcut.py`.
 
@@ -90,3 +91,4 @@ Two tabs with large hand-drawn icons: Reminders (orange bell) and Settings (gear
 0.2, build 3 (19 Nov 2026): a reminder can hold the name of an Apple Shortcut; Shortcut field and "Try it" on the edit screen; "Run: <name>" first button on the nudge; purple play mark and press-and-hold on the row; field `shortcut` in the saved file (format still 1).
 0.3, build 4 (19 Nov 2026): switch "Tick off when it runs" (`tickWhenRun`, default on, also for old reminders) ticks the reminder off when its shortcut runs from the row or the nudge; "Pick" button and "Your shortcuts" list page filled by the helper shortcut "AMS Reminder List" (link back `amsreminder://shortcuts`); Settings "Shortcuts" part; file format still 1.
 0.3 also: the "done · to go" strip is replaced by a round `done-button` (green ring with the number done) at the bottom right; repeating reminders can wear one of eight colours (`colour`, bar, tick circle and repeat mark), format still 1.
+0.3.1 (19 Nov 2026): fixed the crash when a nudge button is pressed (delegate answers on the main thread); "Add the helper" now uses the share sheet (the import link is refused by iOS 27).
