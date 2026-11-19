@@ -183,15 +183,15 @@ struct RemindersScreen: View {
                     .listRowBackground(rowBackground(r, waiting: mark))
                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                         Button { tickWithJoy(r.id) } label: { Text("Done") }.tint(Theme.green)
+                        // 0.5: Skip sits with Done on the right swipe, so the left swipe keeps room for the title.
+                        if r.repeats != .never {
+                            Button { withAnimation { store.skip(r.id) } } label: { Text("Skip") }.tint(.gray)
+                        }
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) { store.delete(r.id) } label: { Text("Delete") }
                         Button { pausing = r } label: { Text("Pause") }.tint(Theme.purple)
                         Button { moving = r } label: { Text("Later") }.tint(Theme.blue)
-                        // Skip is grey, so blue keeps meaning "Later" only (one colour, one meaning).
-                        if r.repeats != .never {
-                            Button { withAnimation { store.skip(r.id) } } label: { Text("Skip") }.tint(.gray)
-                        }
                     }
                 }
             } header: {

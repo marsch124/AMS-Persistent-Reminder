@@ -17,14 +17,16 @@ struct PauseChoice: View {
     var body: some View {
         let now = Date()
         VStack(alignment: .leading, spacing: 8) {
-            Picker("Pause nudges", selection: Binding(get: { mode }, set: { choose($0, now) })) {
-                Text("On").tag(Mode.on)
-                Text("Tomorrow").tag(Mode.tomorrow)
-                Text("Weekend").tag(Mode.weekend)
-                Text("Pick a day").tag(Mode.day)
-                if allowOff { Text("Off").tag(Mode.off) }
+            // 0.5: chips instead of a segmented bar — five choices did not fit ("Tomorr…", "Pick a d…").
+            // Filled purple = the one chosen (purple = nudges and pausing).
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 6) { ForEach(modes, id: \.self) { chip($0, now) } }
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) { ForEach(modes.prefix(3), id: \.self) { chip($0, now) } }
+                    HStack(spacing: 6) { ForEach(modes.dropFirst(3), id: \.self) { chip($0, now) } }
+                }
             }
-            .pickerStyle(.segmented)
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("\(id)-choice")
             if mode == .day {
                 DatePicker("Day", selection: Binding(get: { day }, set: { day = $0; until = Pause.morning(of: $0) }),
@@ -46,6 +48,32 @@ struct PauseChoice: View {
             .accessibilityIdentifier("\(id)-summary")
         }
         .onAppear { read(now) }
+    }
+
+    private var modes: [Mode] { allowOff ? [.on, .tomorrow, .weekend, .day, .off] : [.on, .tomorrow, .weekend, .day] }
+
+    private func title(_ m: Mode) -> String {
+        switch m {
+        case .on: return "On"
+        case .tomorrow: return "Tomorrow"
+        case .weekend: return "Weekend"
+        case .day: return "Pick a day"
+        case .off: return "Off"
+        }
+    }
+
+    private func chip(_ m: Mode, _ now: Date) -> some View {
+        let on = mode == m
+        return Button { choose(m, now) } label: {
+            Text(title(m))
+                .font(.subheadline.weight(.medium)).lineLimit(1).fixedSize()
+                .padding(.horizontal, 12).padding(.vertical, 7)
+                .foregroundStyle(on ? Color.white : Color.primary)
+                .background(on ? Theme.purpleFill : Color(.tertiarySystemFill), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title(m))
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 
     private func firstDay(_ now: Date) -> Date {

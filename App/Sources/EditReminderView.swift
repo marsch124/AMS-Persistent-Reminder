@@ -142,6 +142,7 @@ struct EditReminderView: View {
                 }
                 .padding(16)
             }
+            .scrollDismissesKeyboard(.interactively)
             .background(Color(.systemGroupedBackground))
             .navigationTitle(isNew ? "New reminder" : "Change reminder")
             .navigationBarTitleDisplayMode(.inline)

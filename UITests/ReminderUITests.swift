@@ -218,7 +218,7 @@ final class ReminderUITests: XCTestCase {
         app.tap()
         app.buttons["tab-settings"].tap()
         XCTAssertTrue(app.buttons["settings-done"].waitForExistence(timeout: 5))
-        let all = app.segmentedControls["all-nudges-choice"]
+        let all = app.descendants(matching: .any)["all-nudges-choice"]
         XCTAssertTrue(all.waitForExistence(timeout: 5))
         all.buttons["Weekend"].tap()
         shot("7-settings-top")
@@ -241,7 +241,7 @@ final class ReminderUITests: XCTestCase {
         app.launchArguments = ["-uiTesting", "-sample"]
         app.launch()
         app.descendants(matching: .any)["edit-Call the dentist"].tap()
-        let choice = app.segmentedControls["pause-choice"]
+        let choice = app.descendants(matching: .any)["pause-choice"]
         app.swipeUp()
         XCTAssertTrue(choice.waitForExistence(timeout: 5))
         choice.buttons["Tomorrow"].tap()
@@ -261,7 +261,7 @@ final class ReminderUITests: XCTestCase {
         let again = expectation(for: NSPredicate(format: "value == %@", "Paused until tomorrow 08:00"), evaluatedWith: row)
         wait(for: [again], timeout: 5)
         app.buttons["tab-settings"].tap()
-        let all = app.segmentedControls["all-nudges-choice"]
+        let all = app.descendants(matching: .any)["all-nudges-choice"]
         XCTAssertTrue(all.waitForExistence(timeout: 5))
         all.buttons["Off"].tap()
         app.buttons["tab-reminders"].tap()
