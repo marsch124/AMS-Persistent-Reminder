@@ -11,6 +11,9 @@ struct RemindersScreen: View {
     @State private var nudgesOff = false
     @AppStorage(Nudger.pausedKey) private var pausedAll: Double = 0
     @State private var pausing: Reminder?
+    @State private var moving: Reminder?
+    @StateObject private var voice = SpeechListener()
+    @State private var noticeHide: Task<Void, Never>?
 
     var body: some View {
         let now = store.now
@@ -74,6 +77,7 @@ struct RemindersScreen: View {
             .toolbar(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .bottom) {
               VStack(spacing: 8) {
+              voicePanel
               if let offer = store.undoOffer {
                   UndoBar(offer: offer)
                       .id(offer.stamp)
@@ -81,17 +85,37 @@ struct RemindersScreen: View {
               }
               HStack(spacing: 10) {
                 // 0.3.4 (his ask): a round orange + at the bottom left instead of the wide bar.
-                Button { editing = .new } label: {
-                    ZStack {
-                        Circle().fill(Theme.orangeFill)
-                        ControlMarkView(.add, size: 26, colour: .white)
-                    }
-                    .frame(width: 56, height: 56)
-                    .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                // 0.5: a short tap opens an empty New reminder page; press and hold = say the reminder.
+                ZStack {
+                    Circle().fill(voice.listening ? Theme.orange : Theme.orangeFill)
+                    ControlMarkView(.add, size: 26, colour: .white)
                 }
-                .buttonStyle(.plain)
+                .frame(width: 56, height: 56)
+                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                .scaleEffect(voice.listening ? 1.12 : 1)
+                .animation(.spring(duration: 0.2), value: voice.listening)
+                .contentShape(Circle())
+                .onTapGesture { editing = .new }
+                .gesture(
+                    LongPressGesture(minimumDuration: 0.4)
+                        .sequenced(before: DragGesture(minimumDistance: 0))
+                        .onChanged { value in
+                            if case .second(true, _) = value, !voice.listening {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                voice.start()
+                            }
+                        }
+                        .onEnded { _ in letGo() }
+                )
+                .accessibilityElement(children: .ignore)
+                .accessibilityAddTraits(.isButton)
                 .accessibilityLabel("New reminder")
+                .accessibilityHint("Press and hold to speak a reminder")
+                .accessibilityAction { editing = .new }
                 .accessibilityIdentifier("new-reminder")
+                Text("Hold to speak")
+                    .font(.footnote).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("hold-to-speak-caption")
                 Spacer()
                 // Done is a small round button at the bottom right (his pick, 0.3): the green ring of today
                 // with the number done inside. It opens the Done list.
@@ -124,6 +148,13 @@ struct RemindersScreen: View {
                     Button("Nudge again now") { withAnimation { store.pause(r.id, until: nil) } }
                 }
             }
+            .confirmationDialog("Move \(moving?.title ?? "") to", isPresented: Binding(get: { moving != nil }, set: { if !$0 { moving = nil } }), titleVisibility: .visible, presenting: moving) { r in
+                let t = Date()
+                Button("In 15 minutes") { moveTo(r, Calendar.current.dateInterval(of: .minute, for: t.addingTimeInterval(15 * 60))?.start ?? t.addingTimeInterval(900)) }
+                Button("In 1 hour") { moveTo(r, QuickTime.inOneHour.date(from: t)) }
+                Button(Calendar.current.component(.hour, from: t) >= QuickTime.eveningHour ? "Tomorrow evening" : "Tonight 19:00") { moveTo(r, QuickTime.evening.date(from: t)) }
+                Button("Tomorrow 08:00") { moveTo(r, QuickTime.tomorrowMorning.date(from: t)) }
+            }
             .sheet(isPresented: $showDone) {
                 NavigationStack {
                     DoneScreen()
@@ -155,6 +186,7 @@ struct RemindersScreen: View {
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) { store.delete(r.id) } label: { Text("Delete") }
                         Button { pausing = r } label: { Text("Pause") }.tint(Theme.purple)
+                        Button { moving = r } label: { Text("Later") }.tint(Theme.blue)
                     }
                 }
             } header: {
@@ -188,6 +220,71 @@ struct RemindersScreen: View {
         }
     }
 
+    private func moveTo(_ r: Reminder, _ date: Date) {
+        withAnimation { store.snooze(r.id, to: date) }
+    }
+
+    /// The panel above the bottom buttons: what is heard while the + is held, or why nothing happened.
+    @ViewBuilder
+    private var voicePanel: some View {
+        if voice.listening {
+            HStack(alignment: .top, spacing: 10) {
+                AppMarkView(.bell, size: 22, colour: Theme.orange)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(voice.heard.isEmpty ? "Listening…" : voice.heard)
+                        .font(.body.weight(.medium))
+                        .accessibilityIdentifier("voice-heard")
+                    Text("Listening… let go when you're done")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(12)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.orange, lineWidth: 1.5))
+            .accessibilityIdentifier("voice-panel")
+        } else if let n = voice.notice {
+            HStack(spacing: 10) {
+                Text(n == .didntCatch ? "I didn't catch that" : "Speaking needs the microphone and speech recognition to be on.")
+                    .font(.subheadline)
+                    .accessibilityIdentifier("voice-notice")
+                Spacer(minLength: 0)
+                if n == .needsPermission {
+                    Button("Turn on") { openAppSettings() }
+                        .buttonStyle(.borderedProminent).tint(Theme.purple).controlSize(.small)
+                        .accessibilityIdentifier("voice-turn-on")
+                }
+            }
+            .padding(12)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+        }
+    }
+
+    /// The + was let go: the words become a New reminder page, or a short line says nothing was heard.
+    private func letGo() {
+        guard voice.listening else { return }
+        Task {
+            let said = await voice.finish()
+            if voice.notice == .needsPermission { hideNoticeLater(never: true); return }
+            guard !said.isEmpty else { voice.notice = .didntCatch; hideNoticeLater(); return }
+            let parsed = Spoken.parse(said, now: Date())
+            editing = .spoken(title: parsed.title, due: parsed.due)
+        }
+    }
+
+    private func hideNoticeLater(never: Bool = false) {
+        noticeHide?.cancel()
+        guard !never else { return }
+        noticeHide = Task {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            if !Task.isCancelled { voice.notice = nil }
+        }
+    }
+
+    private func openAppSettings() {
+        if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+    }
+
     private func tickWithJoy(_ id: UUID) {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         withAnimation { store.tick(id) }
@@ -195,6 +292,11 @@ struct RemindersScreen: View {
 
     /// Press and hold a row: its shortcut runs, and it is ticked off when it is set to (rows without one stay still).
     private func runShortcut(_ r: Reminder) {
+        if r.shortcutURL == nil {
+            // 0.5: no shortcut — open its call or link instead.
+            if let url = r.action?.url { UIApplication.shared.open(url) }
+            return
+        }
         var url: URL?
         withAnimation { url = store.runShortcut(r.id) }
         if let url { UIApplication.shared.open(url) }
@@ -259,6 +361,10 @@ struct ReminderRow: View {
                 }
                 .font(.footnote)
                 .foregroundStyle(waiting && !paused ? Theme.orange : Color.secondary)
+                if let note = reminder.note, !note.isEmpty {
+                    Text(note).font(.footnote).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
+                        .accessibilityIdentifier("note-\(reminder.title)")
+                }
             }
             Spacer(minLength: 4)
         }
