@@ -195,7 +195,7 @@ final class ReminderCoreTests: XCTestCase {
 
     // 0.4: pausing all nudges plans them only from the pause's end; Off plans none.
     func testPausingAllNudges() {
-        let r = Reminder(title: "Vitamins", due: d(19, 8), nudgeMinutes: 5)
+        let r = Reminder(title: "Vitamins", due: d(19, 8), nudgeMinutes: 5, louder: false)
         let plan = NudgePlan.plan([r], from: d(19, 9), allPausedUntil: d(23, 8))
         XCTAssertEqual(plan.first?.date, d(23, 8))
         XCTAssertTrue(NudgePlan.plan([r], from: d(19, 9), allPausedUntil: Pause.forever).isEmpty)

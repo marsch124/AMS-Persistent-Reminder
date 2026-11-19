@@ -29,6 +29,9 @@ targets:
     sources:
       - path: App/Sources
       - path: App/Resources/Assets.xcassets
+      # 0.5: the nudge sounds (.caf), at the bundle's top level so a notification finds them by name.
+      - path: App/Resources/Sounds
+        buildPhase: resources
       # The signed helper shortcut, offered through the share sheet when adding it by link does not work.
       - path: App/Resources/AMS Reminder List.shortcut
         buildPhase: resources

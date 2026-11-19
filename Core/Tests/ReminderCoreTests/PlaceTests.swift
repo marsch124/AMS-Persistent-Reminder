@@ -42,4 +42,13 @@ final class PlaceTests: XCTestCase {
         XCTAssertEqual(Words.rowLine(make(), at: now), "When you arrive at Home")
         XCTAssertEqual(Words.rowLine(make(arrive: false), at: now), "When you leave Home")
     }
+
+    func testSkippingAPlaceReminderWaitsForThePlaceAgain() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        var r = Reminder(title: "Water plants", due: now.addingTimeInterval(-60), repeats: .daily)
+        r.place = Place(name: "Home", latitude: 59.6, longitude: 16.2)
+        var list = ReminderList(reminders: [r])
+        XCTAssertNotNil(list.skip(r.id, at: now))
+        XCTAssertEqual(list.reminders.first?.due, Place.notYet)
+    }
 }

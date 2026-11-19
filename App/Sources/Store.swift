@@ -37,6 +37,7 @@ final class Store: ObservableObject {
             // Every test run starts with nudges on (no pause left over from an earlier run).
             UserDefaults.standard.removeObject(forKey: "nudgesPausedUntil")
             UserDefaults.standard.removeObject(forKey: "nudgesPaused")
+            UserDefaults.standard.removeObject(forKey: "nudgesPausedFrom")
             list = args.contains("-sample") ? Sample.list(now: now) : ReminderList()
             shortcutNames = args.contains("-sample") ? ["Call Andreas Bjurling", "Coffee timer", "Play morning music", "Weather today"] : []
         } else {
@@ -58,6 +59,7 @@ final class Store: ObservableObject {
     func update(_ r: Reminder) { change { $0.update(r) } }
     func delete(_ id: UUID) { change { $0.delete(id) } }
     func pause(_ id: UUID, until date: Date?) { change { $0.pause(id, until: date) } }
+    func pause(_ id: UUID, from: Date?, until: Date?) { change { $0.pause(id, from: from, until: until) } }
     func snooze(_ id: UUID, to date: Date) { change { $0.snooze(id, to: date) } }
     func bringBack(_ entryID: UUID) { change { $0.bringBack(entryID) } }
 

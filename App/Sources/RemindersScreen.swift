@@ -41,11 +41,11 @@ struct RemindersScreen: View {
                     Section {
                         HStack(spacing: 8) {
                             ControlMarkView(.pause, size: 18, colour: Theme.purple)
-                            Text(until >= Pause.forever ? "Nudges are off." : "Nudges are paused \(Pause.text(until, at: now)).")
+                            Text(until >= Pause.forever ? "Nudges are off." : "Nudges are paused \(Pause.text(until, at: now, from: Nudger.allPausedFrom)).")
                                 .font(.subheadline)
                                 .accessibilityIdentifier("all-paused-line")
                             Spacer()
-                            Button("Turn on") { pausedAll = 0; store.refresh() }
+                            Button("Turn on") { pausedAll = 0; UserDefaults.standard.removeObject(forKey: Nudger.pausedFromKey); store.refresh() }
                                 .buttonStyle(.borderedProminent).tint(Theme.purple).controlSize(.small)
                                 .accessibilityIdentifier("unpause-nudges")
                         }
@@ -143,8 +143,9 @@ struct RemindersScreen: View {
             }
             .confirmationDialog("Pause nudges for \(pausing?.title ?? "")", isPresented: Binding(get: { pausing != nil }, set: { if !$0 { pausing = nil } }), titleVisibility: .visible, presenting: pausing) { r in
                 Button("Until tomorrow 08:00") { withAnimation { store.pause(r.id, until: Pause.tomorrow(after: Date())) } }
+                Button("For the weekend") { let w = Pause.weekend(after: Date()); withAnimation { store.pause(r.id, from: w.from, until: w.until) } }
                 Button("Pick a day…") { editing = .edit(r) }
-                if r.isPaused(at: store.now) {
+                if Pause.isOn(r.pausedUntil, at: store.now) {
                     Button("Nudge again now") { withAnimation { store.pause(r.id, until: nil) } }
                 }
             }
