@@ -175,7 +175,7 @@ struct EditReminderView: View {
         .onAppear(perform: fill)
     }
 
-    private var isNew: Bool { if case .new = target { return true } else { return false } }
+    private var isNew: Bool { if case .edit = target { return false } else { return true } }
 
     private func fill() {
         switch target {
@@ -186,6 +186,12 @@ struct EditReminderView: View {
             let next = cal.date(byAdding: .hour, value: 1, to: Date())!
             due = at(hour: cal.component(.hour, from: next), minute: 0, on: next)
             titleFocused = true
+        case .spoken(let said, let when):
+            nudge = defaultNudge
+            title = said
+            let cal = Calendar.current
+            let next = cal.date(byAdding: .hour, value: 1, to: Date())!
+            due = when ?? at(hour: cal.component(.hour, from: next), minute: 0, on: next)
         case .edit(let r):
             title = r.title
             due = r.due
@@ -215,7 +221,7 @@ struct EditReminderView: View {
         // A time that has already passed nudges right away (in a few seconds).
         let due = self.due < Date() ? Date().addingTimeInterval(5) : self.due
         switch target {
-        case .new:
+        case .new, .spoken:
             store.add(Reminder(title: text, due: due, repeats: repeats, nudgeMinutes: nudge, shortcut: shortcut, tickWhenRun: tickWhenRun, colour: colour, pausedUntil: pausedUntil,
                                note: note, action: action, sound: sound, louder: louder, stopAt: stopAt, every: every, weekdays: weekdays, afterDone: afterDone, place: place))
         case .edit(var r):

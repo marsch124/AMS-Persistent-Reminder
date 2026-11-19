@@ -308,9 +308,12 @@ struct ReminderRow: View {
 enum EditTarget: Identifiable {
     case new
     case edit(Reminder)
+    /// 0.5: a new reminder filled from what was said (hold the round +); due nil = the usual next full hour.
+    case spoken(title: String, due: Date?)
     var id: String {
         switch self {
         case .new: return "new"
+        case .spoken: return "spoken"
         case .edit(let r): return r.id.uuidString
         }
     }

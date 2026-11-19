@@ -33,6 +33,28 @@ public struct TapAction: Codable, Equatable, Sendable {
     public init(kind: Kind, value: String, label: String = "") {
         self.kind = kind; self.value = value; self.label = label
     }
+
+    /// tel:<digits and +> for a call; for a link, the address with https:// added when it has no scheme. Nil when empty.
+    public var url: URL? {
+        let v = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !v.isEmpty else { return nil }
+        switch kind {
+        case .call:
+            let digits = v.filter { $0.isNumber || $0 == "+" }
+            return digits.isEmpty ? nil : URL(string: "tel:\(digits)")
+        case .link:
+            return URL(string: v.contains("://") ? v : "https://\(v)")
+        }
+    }
+
+    /// The button's words: "Call Anna", "Call 070 123 45 67", "Open Weather", "Open link".
+    public var buttonTitle: String {
+        let name = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch kind {
+        case .call: return "Call \(name.isEmpty ? value : name)"
+        case .link: return "Open \(name.isEmpty ? "link" : name)"
+        }
+    }
 }
 
 /// 0.5 (pick 3): a reminder's own nudge sound. The files are bundled as `<rawValue>.caf`; nil on a reminder = the iPhone's own sound.
@@ -44,6 +66,9 @@ public enum NudgeSound: String, Codable, CaseIterable, Sendable {
 
 /// 0.5 (pick 11): a place where a reminder starts nudging, on arriving or on leaving.
 public struct Place: Codable, Equatable, Sendable {
+    /// The `due` of a place reminder that has not reached its place yet (it never nudges until then).
+    public static let notYet = Date.distantFuture
+
     public var name: String
     public var latitude: Double
     public var longitude: Double
@@ -80,6 +105,8 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
     public var colour: RowColour?
     /// No nudges for this reminder before this time (0.4, "Pause nudges"); nil = not paused.
     public var pausedUntil: Date?
+    /// 0.5 (Weekend pause): the pause starts at this time (nil = it started already). Lane "nudges" uses it.
+    public var pausedFrom: Date?
 
     // 0.5 — each field belongs to one pick; all read tolerantly (missing = the value in init).
     /// Pick 16: a few extra words, shown on the row and in the nudge; nil = none.
@@ -127,7 +154,7 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
     // Tolerant reading: a field a later version adds never makes an older file unreadable, and a
     // missing field gets a sensible value instead of losing the reminder.
     enum CodingKeys: String, CodingKey { case id, title, due, repeats, nudgeMinutes, created, shortcut, tickWhenRun, colour, pausedUntil
-        case note, action, sound, louder, stopAt, every, weekdays, afterDone, place }
+        case pausedFrom, note, action, sound, louder, stopAt, every, weekdays, afterDone, place }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = (try? c.decode(UUID.self, forKey: .id)) ?? UUID()
@@ -141,6 +168,7 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
         // A colour an older or newer version does not know reads as none, never as a broken reminder.
         colour = try? c.decode(RowColour.self, forKey: .colour)
         pausedUntil = try? c.decode(Date.self, forKey: .pausedUntil)
+        pausedFrom = try? c.decode(Date.self, forKey: .pausedFrom)
         note = Reminder.cleanShortcut(try? c.decode(String.self, forKey: .note))
         action = try? c.decode(TapAction.self, forKey: .action)
         sound = try? c.decode(NudgeSound.self, forKey: .sound)
