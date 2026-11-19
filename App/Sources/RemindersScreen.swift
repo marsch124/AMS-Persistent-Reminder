@@ -72,6 +72,12 @@ struct RemindersScreen: View {
             .listSectionSpacing(.compact)
             .toolbar(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .bottom) {
+              VStack(spacing: 8) {
+              if let offer = store.undoOffer {
+                  UndoBar(offer: offer)
+                      .id(offer.stamp)
+                      .transition(.move(edge: .bottom).combined(with: .opacity))
+              }
               HStack(spacing: 10) {
                 // 0.3.4 (his ask): a round orange + at the bottom left instead of the wide bar.
                 Button { editing = .new } label: {
@@ -103,7 +109,9 @@ struct RemindersScreen: View {
                 .accessibilityLabel("Done: \(counts.done) done, \(counts.toGo) to go today")
                 .accessibilityIdentifier("done-button")
               }
+              }
               .padding(.horizontal, 16).padding(.bottom, 8)
+              .animation(.default, value: store.undoOffer)
             }
             .sheet(item: $editing) { target in
                 EditReminderView(target: target)
@@ -315,6 +323,36 @@ enum EditTarget: Identifiable {
         case .new: return "new"
         case .spoken: return "spoken"
         case .edit(let r): return r.id.uuidString
+        }
+    }
+}
+
+/// 0.5 (pick 27): "Ticked off: …" with Undo, just above the round buttons; goes by itself after 5 seconds.
+struct UndoBar: View {
+    @EnvironmentObject private var store: Store
+    let offer: Store.UndoOffer
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ControlMarkView(.ticked, size: 22, colour: Theme.green)
+            Text("Ticked off: \(offer.title)").font(.subheadline).lineLimit(1)
+            Spacer(minLength: 4)
+            Button { store.undoTick(offer) } label: {
+                Text("Undo").font(.subheadline.weight(.semibold)).foregroundStyle(.white)
+                    .padding(.horizontal, 14).padding(.vertical, 6)
+                    .background(Theme.dynamic(0x24985D, 0x1F8A52), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("undo")
+        }
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("undo-bar")
+        .task {
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            if store.undoOffer == offer { store.undoOffer = nil }
         }
     }
 }

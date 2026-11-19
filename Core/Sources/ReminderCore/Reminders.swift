@@ -453,3 +453,38 @@ public enum ShortcutNames {
         return names.filter { n in words.allSatisfy { n.localizedCaseInsensitiveContains($0) } }
     }
 }
+
+// MARK: 0.5 lane "safety" — copies (iCloud, file)
+
+extension ReminderList {
+    /// "12 reminders, 30 done" (singular "1 reminder").
+    public var countsText: String {
+        "\(reminders.count) \(reminders.count == 1 ? "reminder" : "reminders"), \(done.count) done"
+    }
+
+    /// A copy that holds nothing at all is not a reminder copy.
+    public var isEmptyCopy: Bool { reminders.isEmpty && done.isEmpty }
+
+    /// Reads a copy with the tolerant decoder; nil when it cannot be read or holds no reminders and nothing done.
+    public static func readCopy(_ data: Data) -> ReminderList? {
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .iso8601
+        guard let list = try? d.decode(ReminderList.self, from: data), !list.isEmptyCopy else { return nil }
+        return list
+    }
+
+    /// The list as JSON for the iCloud copy, at most `maxBytes`: the oldest Done entries are dropped from this
+    /// copy only (the list itself is not changed). Nil when it still does not fit without them.
+    public func trimmedForCloud(maxBytes: Int) -> Data? {
+        let e = JSONEncoder()
+        e.dateEncodingStrategy = .iso8601
+        var copy = self
+        while true {
+            guard let data = try? e.encode(copy) else { return nil }
+            if data.count <= maxBytes { return data }
+            if copy.done.isEmpty { return nil }
+            // done is newest first: drop the oldest in chunks, halving the rest if it is huge.
+            copy.done.removeLast(max(1, copy.done.count / 10))
+        }
+    }
+}

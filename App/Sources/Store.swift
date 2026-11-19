@@ -11,6 +11,12 @@ final class Store: ObservableObject {
     @Published private(set) var list = ReminderList()
     /// The clock the screens use; moves on every 10 seconds while the app is open.
     @Published var now = Date()
+    /// 0.5 (pick 27): the bar "Ticked off: …" with Undo, shown for 5 seconds after a tick on the list.
+    @Published var undoOffer: UndoOffer?
+    /// 0.5 (pick 28): when the iCloud copy was last written.
+    @Published private(set) var cloudSavedAt: Date?
+
+    struct UndoOffer: Equatable { var entryID: UUID; var title: String; var stamp = UUID() }
 
     /// UI tests and pictures: a list in memory only, never saved, no messages planned.
     let isTesting: Bool
@@ -35,7 +41,14 @@ final class Store: ObservableObject {
             shortcutNames = args.contains("-sample") ? ["Call Andreas Bjurling", "Coffee timer", "Play morning music", "Weather today"] : []
         } else {
             try? FileManager.default.createDirectory(at: backupFolder, withIntermediateDirectories: true)
+            let fresh = !FileManager.default.fileExists(atPath: fileURL.path)
             load()
+            cloudSavedAt = CloudCopy.lastSaved
+            // A fresh install (no file yet) takes the iCloud copy by itself; a list that is there is never replaced.
+            if fresh, list.reminders.isEmpty, list.done.isEmpty, let c = CloudCopy.read() {
+                list = c.list
+                save()
+            }
         }
     }
 
@@ -75,10 +88,35 @@ final class Store: ObservableObject {
         if !isTesting { UserDefaults.standard.set(names, forKey: "shortcutNames") }
     }
 
-    func tick(_ id: UUID) {
+    /// Ticks it off. Returns the Done entry's id (for Undo). On the list, it also offers the 5-second Undo bar.
+    @discardableResult
+    func tick(_ id: UUID) -> UUID? {
         let t = Date()
-        change { $0.tick(id, at: t) }
+        var entry: DoneEntry?
+        change { entry = $0.tick(id, at: t) }
         Nudger.clearDelivered(for: id)
+        if let entry { undoOffer = UndoOffer(entryID: entry.id, title: entry.reminder.title) }
+        return entry?.id
+    }
+
+    /// Undo from the bar.
+    func undoTick(_ offer: UndoOffer) {
+        undoOffer = nil
+        bringBack(offer.entryID)
+    }
+
+    // MARK: Safety — replace the list with a copy (iCloud or a file); the list now is kept first
+
+    /// Keeps the current file as a safety copy (never pruned by the daily "7 kept" rule), then replaces the list.
+    func replaceList(with new: ReminderList) {
+        if !isTesting, let data = try? JSONEncoder.reminders.encode(list) {
+            let f = DateFormatter()
+            f.dateFormat = "yyyy-MM-dd HH.mm.ss"
+            let url = backupFolder.appendingPathComponent("before replacing \(f.string(from: Date())).json")
+            try? data.write(to: url, options: .atomic)
+        }
+        undoOffer = nil
+        change { $0 = new }
     }
 
     private func change(_ edit: (inout ReminderList) -> Void) {
@@ -121,6 +159,7 @@ final class Store: ObservableObject {
         guard let data = try? JSONEncoder.reminders.encode(list) else { return }
         try? data.write(to: fileURL, options: .atomic)
         keepSafetyCopy(data)
+        if let at = CloudCopy.write(list) { cloudSavedAt = at }
     }
 
     /// One safety copy a day, the last 7 days kept.
