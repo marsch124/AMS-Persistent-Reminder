@@ -37,6 +37,16 @@
 	<false/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
+	<key>NSContactsUsageDescription</key>
+	<string>To pick someone to call from a reminder.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>So a reminder can start nudging when you arrive at or leave a place, even while the app is closed.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>To pick a place for a reminder, such as Home.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>So you can say a new reminder: hold the round + and speak.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Turns what you say into a new reminder.</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

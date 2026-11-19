@@ -18,6 +18,16 @@ struct EditReminderView: View {
     @State private var tickWhenRun = true
     @State private var colour: RowColour?
     @State private var pausedUntil: Date?
+    // 0.5 fields (each part's own file in Parts/ shows them).
+    @State private var note = ""
+    @State private var action: TapAction?
+    @State private var sound: NudgeSound?
+    @State private var louder = true
+    @State private var stopAt: Int?
+    @State private var every = 2
+    @State private var weekdays: [Int] = []
+    @State private var afterDone = false
+    @State private var place: Place?
     @State private var filled = false
     @State private var picking = false
     @State private var pickingDay = false
@@ -63,11 +73,10 @@ struct EditReminderView: View {
                     Text(summary).font(.footnote).foregroundStyle(Theme.blue)
                         .accessibilityIdentifier("due-summary")
 
+                    PlaceSection(place: $place)
+
                     heading("Repeat")
-                    Picker("Repeat", selection: $repeats) {
-                        ForEach(Repeat.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
+                    RepeatSection(repeats: $repeats, every: $every, weekdays: $weekdays, afterDone: $afterDone, due: due)
                     if repeats != .never { colourDots }
 
                     heading("Nudge me every")
@@ -80,6 +89,7 @@ struct EditReminderView: View {
                         Text("Keeps reminding you until you tick it off.")
                     }
                     .font(.footnote).foregroundStyle(.secondary)
+                    NudgeMoreSection(sound: $sound, louder: $louder, stopAt: $stopAt)
 
                     heading("Pause nudges")
                     if filled { PauseChoice(until: $pausedUntil, allowOff: false) }
@@ -114,6 +124,8 @@ struct EditReminderView: View {
                         Text("Press and hold the nudge or the row to run it.")
                     }
                     .font(.footnote).foregroundStyle(.secondary)
+
+                    NoteLinkSection(note: $note, action: $action)
 
                     if case .edit = target {
                         Button(role: .destructive) { askDelete = true } label: {
@@ -183,6 +195,15 @@ struct EditReminderView: View {
             tickWhenRun = r.tickWhenRun
             colour = r.colour
             pausedUntil = r.pausedUntil
+            note = r.note ?? ""
+            action = r.action
+            sound = r.sound
+            louder = r.louder
+            stopAt = r.stopAt
+            every = r.every
+            weekdays = r.weekdays
+            afterDone = r.afterDone
+            place = r.place
         }
         filled = true
         pickingDay = dayChoice == .other
@@ -195,7 +216,8 @@ struct EditReminderView: View {
         let due = self.due < Date() ? Date().addingTimeInterval(5) : self.due
         switch target {
         case .new:
-            store.add(Reminder(title: text, due: due, repeats: repeats, nudgeMinutes: nudge, shortcut: shortcut, tickWhenRun: tickWhenRun, colour: colour, pausedUntil: pausedUntil))
+            store.add(Reminder(title: text, due: due, repeats: repeats, nudgeMinutes: nudge, shortcut: shortcut, tickWhenRun: tickWhenRun, colour: colour, pausedUntil: pausedUntil,
+                               note: note, action: action, sound: sound, louder: louder, stopAt: stopAt, every: every, weekdays: weekdays, afterDone: afterDone, place: place))
         case .edit(var r):
             r.title = text
             r.due = due
@@ -205,6 +227,15 @@ struct EditReminderView: View {
             r.tickWhenRun = tickWhenRun
             r.colour = colour
             r.pausedUntil = pausedUntil
+            r.note = Reminder.cleanShortcut(note)
+            r.action = action
+            r.sound = sound
+            r.louder = louder
+            r.stopAt = stopAt
+            r.every = max(1, every)
+            r.weekdays = weekdays
+            r.afterDone = afterDone
+            r.place = place
             store.update(r)
         }
         dismiss()

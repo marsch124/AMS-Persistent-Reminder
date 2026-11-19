@@ -153,6 +153,8 @@ public enum Words {
             f.dateFormat = "EEEE"
             return "Every \(f.string(from: r.due))"
         case .monthly: return "Every month on the \(ordinal(calendar.component(.day, from: r.due)))"
+        // 0.5 stubs — lane "repeats" writes the real words.
+        case .weekdays, .hours, .days: return "Repeats"
         }
     }
 

@@ -72,6 +72,8 @@ struct SettingsScreen: View {
                     Text("New reminders start with this. You can change it, and pause it, on each reminder.")
                 }
 
+                NudgeSettingsSection()
+
                 Section {
                     NavigationLink { ShortcutPicker() } label: {
                         HStack(spacing: 12) {
@@ -87,6 +89,8 @@ struct SettingsScreen: View {
                 } footer: {
                     Text("Load them once with the helper, then pick them on each reminder.")
                 }
+
+                SafetySettingsSection()
 
                 Section {
                     NavigationLink { GuideView() } label: {

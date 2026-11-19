@@ -6,6 +6,8 @@ import Foundation
 /// How often a reminder comes back after it has been ticked off.
 public enum Repeat: String, Codable, CaseIterable, Sendable {
     case never, daily, weekly, monthly
+    /// 0.5: on chosen days of the week (`Reminder.weekdays`), every few hours / every few days (`Reminder.every`).
+    case weekdays, hours, days
 
     public var title: String {
         switch self {
@@ -13,7 +15,44 @@ public enum Repeat: String, Codable, CaseIterable, Sendable {
         case .daily: return "Daily"
         case .weekly: return "Weekly"
         case .monthly: return "Monthly"
+        case .weekdays: return "On days"
+        case .hours: return "Hours"
+        case .days: return "Days"
         }
+    }
+}
+
+/// 0.5 (pick 17): what pressing and holding a reminder (or the nudge's first button) opens — a phone call or a link.
+public struct TapAction: Codable, Equatable, Sendable {
+    public enum Kind: String, Codable, Sendable { case call, link }
+    public var kind: Kind
+    /// A phone number for `.call`, a web address for `.link`.
+    public var value: String
+    /// What the button says after "Call" / "Open", e.g. the contact's name; may be empty.
+    public var label: String
+    public init(kind: Kind, value: String, label: String = "") {
+        self.kind = kind; self.value = value; self.label = label
+    }
+}
+
+/// 0.5 (pick 3): a reminder's own nudge sound. The files are bundled as `<rawValue>.caf`; nil on a reminder = the iPhone's own sound.
+public enum NudgeSound: String, Codable, CaseIterable, Sendable {
+    case chime, bell, marimba, pop, rise, knock
+    public var title: String { rawValue.capitalized }
+    public var fileName: String { "\(rawValue).caf" }
+}
+
+/// 0.5 (pick 11): a place where a reminder starts nudging, on arriving or on leaving.
+public struct Place: Codable, Equatable, Sendable {
+    public var name: String
+    public var latitude: Double
+    public var longitude: Double
+    /// Metres around the spot that count as being there.
+    public var radius: Double
+    /// true = when I arrive, false = when I leave.
+    public var onArrive: Bool
+    public init(name: String, latitude: Double, longitude: Double, radius: Double = 150, onArrive: Bool = true) {
+        self.name = name; self.latitude = latitude; self.longitude = longitude; self.radius = radius; self.onArrive = onArrive
     }
 }
 
@@ -42,8 +81,38 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
     /// No nudges for this reminder before this time (0.4, "Pause nudges"); nil = not paused.
     public var pausedUntil: Date?
 
-    public init(id: UUID = UUID(), title: String, due: Date, repeats: Repeat = .never, nudgeMinutes: Int = 5, created: Date = Date(), shortcut: String? = nil, tickWhenRun: Bool = true, colour: RowColour? = nil, pausedUntil: Date? = nil) {
+    // 0.5 — each field belongs to one pick; all read tolerantly (missing = the value in init).
+    /// Pick 16: a few extra words, shown on the row and in the nudge; nil = none.
+    public var note: String?
+    /// Pick 17: call someone or open a link.
+    public var action: TapAction?
+    /// Pick 3: its own nudge sound; nil = the iPhone's own.
+    public var sound: NudgeSound?
+    /// Pick 2: after 3 nudges it nudges twice as often (never under 1 min) with a stronger sound.
+    public var louder: Bool
+    /// Pick 5: stop nudging at this time of day (minutes after midnight) on the day it is for; nil = never stops.
+    public var stopAt: Int?
+    /// Pick 8: the N in "every N hours" / "every N days" (`Repeat.hours` / `.days`), at least 1.
+    public var every: Int
+    /// Pick 7: the days for `Repeat.weekdays`, Calendar weekday numbers (1 = Sunday … 7 = Saturday).
+    public var weekdays: [Int]
+    /// Pick 9: the next time is counted from when it was ticked off, not from when it was due.
+    public var afterDone: Bool
+    /// Pick 11: starts nudging when arriving at / leaving this place; nil = an ordinary timed reminder.
+    public var place: Place?
+
+    public init(id: UUID = UUID(), title: String, due: Date, repeats: Repeat = .never, nudgeMinutes: Int = 5, created: Date = Date(), shortcut: String? = nil, tickWhenRun: Bool = true, colour: RowColour? = nil, pausedUntil: Date? = nil,
+                note: String? = nil, action: TapAction? = nil, sound: NudgeSound? = nil, louder: Bool = true, stopAt: Int? = nil, every: Int = 2, weekdays: [Int] = [], afterDone: Bool = false, place: Place? = nil) {
         self.pausedUntil = pausedUntil
+        self.note = Reminder.cleanShortcut(note)
+        self.action = action
+        self.sound = sound
+        self.louder = louder
+        self.stopAt = stopAt
+        self.every = max(1, every)
+        self.weekdays = weekdays
+        self.afterDone = afterDone
+        self.place = place
         self.shortcut = Reminder.cleanShortcut(shortcut)
         self.tickWhenRun = tickWhenRun
         self.colour = colour
@@ -57,7 +126,8 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
 
     // Tolerant reading: a field a later version adds never makes an older file unreadable, and a
     // missing field gets a sensible value instead of losing the reminder.
-    enum CodingKeys: String, CodingKey { case id, title, due, repeats, nudgeMinutes, created, shortcut, tickWhenRun, colour, pausedUntil }
+    enum CodingKeys: String, CodingKey { case id, title, due, repeats, nudgeMinutes, created, shortcut, tickWhenRun, colour, pausedUntil
+        case note, action, sound, louder, stopAt, every, weekdays, afterDone, place }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = (try? c.decode(UUID.self, forKey: .id)) ?? UUID()
@@ -71,6 +141,15 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
         // A colour an older or newer version does not know reads as none, never as a broken reminder.
         colour = try? c.decode(RowColour.self, forKey: .colour)
         pausedUntil = try? c.decode(Date.self, forKey: .pausedUntil)
+        note = Reminder.cleanShortcut(try? c.decode(String.self, forKey: .note))
+        action = try? c.decode(TapAction.self, forKey: .action)
+        sound = try? c.decode(NudgeSound.self, forKey: .sound)
+        louder = (try? c.decode(Bool.self, forKey: .louder)) ?? true
+        stopAt = try? c.decode(Int.self, forKey: .stopAt)
+        every = max(1, (try? c.decode(Int.self, forKey: .every)) ?? 2)
+        weekdays = (try? c.decode([Int].self, forKey: .weekdays)) ?? []
+        afterDone = (try? c.decode(Bool.self, forKey: .afterDone)) ?? false
+        place = try? c.decode(Place.self, forKey: .place)
     }
 
     /// A shortcut name without spaces around it; an empty one means none.
@@ -131,6 +210,8 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
         case .daily: unit = .day
         case .weekly: unit = .weekOfYear
         case .monthly: unit = .month
+        // 0.5 stubs — lane "repeats" fills these in (picks 7, 8, 9).
+        case .weekdays, .hours, .days: unit = .day
         }
         var n = 1
         while n < 100_000 {
@@ -148,16 +229,30 @@ public struct DoneEntry: Codable, Identifiable, Equatable, Sendable {
     public var reminder: Reminder
     public var doneAt: Date
     public var nudges: Int
+    /// 0.5 (pick 12): this time was skipped, not done — never counted as late.
+    public var skipped: Bool
 
-    public init(id: UUID = UUID(), reminder: Reminder, doneAt: Date, nudges: Int) {
+    public init(id: UUID = UUID(), reminder: Reminder, doneAt: Date, nudges: Int, skipped: Bool = false) {
+        self.skipped = skipped
         self.id = id
         self.reminder = reminder
         self.doneAt = doneAt
         self.nudges = nudges
     }
 
-    /// "On time" or "After 3 nudges" — said kindly.
+    enum CodingKeys: String, CodingKey { case id, reminder, doneAt, nudges, skipped }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = (try? c.decode(UUID.self, forKey: .id)) ?? UUID()
+        reminder = try c.decode(Reminder.self, forKey: .reminder)
+        doneAt = (try? c.decode(Date.self, forKey: .doneAt)) ?? Date()
+        nudges = (try? c.decode(Int.self, forKey: .nudges)) ?? 0
+        skipped = (try? c.decode(Bool.self, forKey: .skipped)) ?? false
+    }
+
+    /// "On time" or "After 3 nudges" — said kindly; "Skipped" for a skipped time (0.5).
     public var howText: String {
+        if skipped { return "Skipped" }
         switch nudges {
         case ...1: return "On time"
         default: return "After \(nudges) nudges"
@@ -213,6 +308,11 @@ public struct ReminderList: Codable, Equatable, Sendable {
         }
         return entry
     }
+
+    /// 0.5 (pick 12) — lane "repeats": a repeating reminder skips this time: it moves on to its next time and the
+    /// Done list gets a "Skipped" entry (not late). A one-off reminder is not changed. Stub until the lane fills it.
+    @discardableResult
+    public mutating func skip(_ id: UUID, at now: Date, calendar: Calendar = .current) -> DoneEntry? { nil }
 
     /// Undoes a tick: the reminder comes back with the time it had, and the Done entry goes.
     public mutating func bringBack(_ entryID: UUID) {
