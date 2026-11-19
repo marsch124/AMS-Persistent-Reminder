@@ -13,7 +13,7 @@ struct SettingsScreen: View {
     @State private var planned = ""
 
     var body: some View {
-        let doneToday = store.list.doneToday(at: store.now).count
+        let doneToday = store.list.doneToday(at: store.now).filter { !$0.skipped }.count
         NavigationStack {
             List {
                 Section {
@@ -181,7 +181,11 @@ struct DoneScreen: View {
                 Section {
                     ForEach(group.entries) { e in
                         HStack(spacing: 11) {
-                            ControlMarkView(.ticked, size: 26, colour: Theme.green)
+                            if e.skipped {
+                                ControlMarkView(.skip, size: 26, colour: Color.secondary)
+                            } else {
+                                ControlMarkView(.ticked, size: 26, colour: Theme.green)
+                            }
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(e.reminder.title)
                                 Text(e.howText).font(.footnote).foregroundStyle(.secondary)

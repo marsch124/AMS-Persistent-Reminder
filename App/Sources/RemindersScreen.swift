@@ -146,6 +146,9 @@ struct RemindersScreen: View {
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) { store.delete(r.id) } label: { Text("Delete") }
                         Button { pausing = r } label: { Text("Pause") }.tint(Theme.purple)
+                        if r.repeats != .never {
+                            Button { withAnimation { store.skip(r.id) } } label: { Text("Skip") }.tint(Theme.blue)
+                        }
                     }
                 }
             } header: {
