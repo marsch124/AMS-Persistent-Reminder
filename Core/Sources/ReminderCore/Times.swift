@@ -107,6 +107,8 @@ public enum NudgePlan {
         let start = Pause.isOn(allPausedUntil, at: realNow) ? allPausedUntil! : realNow
         if start >= Pause.forever { return [] }
         for r in reminders {
+            // A place reminder that has not reached its place never nudges.
+            if r.isAtPlaceWaiting || r.due >= Place.notYet { continue }
             // A paused reminder starts again where its own pause ends (0.4).
             let now = Pause.isOn(r.pausedUntil, at: start) ? r.pausedUntil! : start
             if now >= Pause.forever { continue }
@@ -161,6 +163,9 @@ public enum Words {
     /// The small grey line under a reminder on the main screen.
     /// While all nudges are paused (`allPausedUntil`), a waiting one says so instead of "Nudging every …".
     public static func rowLine(_ r: Reminder, at now: Date, allPausedUntil: Date? = nil, calendar: Calendar = .current) -> String {
+        if r.isAtPlaceWaiting, let p = r.place {
+            return p.onArrive ? "When you arrive at \(p.name)" : "When you leave \(p.name)"
+        }
         let own = r.isPaused(at: now) ? r.pausedUntil : nil
         let all = Pause.isOn(allPausedUntil, at: now) ? allPausedUntil : nil
         if let until = [own, all].compactMap({ $0 }).max(), own != nil || r.isWaiting(at: now) {

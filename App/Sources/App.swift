@@ -13,6 +13,8 @@ struct PersistentReminderApp: App {
         // Set before anything else, so a nudge's button that wakes the app is never missed.
         UNUserNotificationCenter.current().delegate = NudgeDelegate.shared
         Nudger.setUp()
+        // Made now, so iOS can wake the app for an arrival or a leaving and the event is never missed.
+        _ = PlaceWatcher.shared
     }
 
     var body: some Scene {

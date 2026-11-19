@@ -28,6 +28,7 @@ struct EditReminderView: View {
     @State private var weekdays: [Int] = []
     @State private var afterDone = false
     @State private var place: Place?
+    @State private var noSpot = false
     @State private var filled = false
     @State private var picking = false
     @State private var pickingDay = false
@@ -49,29 +50,31 @@ struct EditReminderView: View {
                         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
                         .accessibilityIdentifier("title-field")
 
-                    heading("When")
-                    quickButtons
-                    Picker("Day", selection: dayBinding) {
-                        Text("Today").tag(DayChoice.today)
-                        Text("Tomorrow").tag(DayChoice.tomorrow)
-                        Text(dayChoice == .other ? Theme.shortDay(due) : "Pick a day").tag(DayChoice.other)
+                    if place == nil {
+                        heading("When")
+                        quickButtons
+                        Picker("Day", selection: dayBinding) {
+                            Text("Today").tag(DayChoice.today)
+                            Text("Tomorrow").tag(DayChoice.tomorrow)
+                            Text(dayChoice == .other ? Theme.shortDay(due) : "Pick a day").tag(DayChoice.other)
+                        }
+                        .pickerStyle(.segmented)
+                        .accessibilityIdentifier("day-picker")
+                        if pickingDay {
+                            DatePicker("Day", selection: dayOnlyBinding, in: Calendar.current.startOfDay(for: Date())..., displayedComponents: .date)
+                                .datePickerStyle(.graphical)
+                                .tint(Theme.blue)
+                                .padding(6)
+                                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        }
+                        hourGrid
+                        Picker("Minutes", selection: minuteBinding) {
+                            ForEach(QuickTime.gridMinutes, id: \.self) { m in Text(String(format: ":%02d", m)).tag(m) }
+                        }
+                        .pickerStyle(.segmented)
+                        Text(summary).font(.footnote).foregroundStyle(Theme.blue)
+                            .accessibilityIdentifier("due-summary")
                     }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("day-picker")
-                    if pickingDay {
-                        DatePicker("Day", selection: dayOnlyBinding, in: Calendar.current.startOfDay(for: Date())..., displayedComponents: .date)
-                            .datePickerStyle(.graphical)
-                            .tint(Theme.blue)
-                            .padding(6)
-                            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-                    }
-                    hourGrid
-                    Picker("Minutes", selection: minuteBinding) {
-                        ForEach(QuickTime.gridMinutes, id: \.self) { m in Text(String(format: ":%02d", m)).tag(m) }
-                    }
-                    .pickerStyle(.segmented)
-                    Text(summary).font(.footnote).foregroundStyle(Theme.blue)
-                        .accessibilityIdentifier("due-summary")
 
                     PlaceSection(place: $place)
 
@@ -165,6 +168,11 @@ struct EditReminderView: View {
                         }
                 }
             }
+            .alert("Pick the place first", isPresented: $noSpot) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Tap “Use where I am now” while you are at the place, or switch “Start at a place” off.")
+            }
             .confirmationDialog("Delete this reminder?", isPresented: $askDelete, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) {
                     if case .edit(let r) = target { store.delete(r.id) }
@@ -194,7 +202,11 @@ struct EditReminderView: View {
             due = when ?? at(hour: cal.component(.hour, from: next), minute: 0, on: next)
         case .edit(let r):
             title = r.title
-            due = r.due
+            // A place reminder still waiting has no time: the When part starts from the next full hour.
+            if r.due >= Place.notYet {
+                let next = Calendar.current.date(byAdding: .hour, value: 1, to: Date())!
+                due = at(hour: Calendar.current.component(.hour, from: next), minute: 0, on: next)
+            } else { due = r.due }
             repeats = r.repeats
             nudge = r.nudgeMinutes
             shortcut = r.shortcut ?? ""
@@ -218,8 +230,15 @@ struct EditReminderView: View {
     private func save() {
         let text = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { titleFocused = true; return }
+        // A place needs a spot: tell him instead of watching the middle of the sea.
+        if let p = place, !p.hasSpot { noSpot = true; return }
         // A time that has already passed nudges right away (in a few seconds).
-        let due = self.due < Date() ? Date().addingTimeInterval(5) : self.due
+        var due = self.due < Date() ? Date().addingTimeInterval(5) : self.due
+        // A place reminder waits for its place; an already reached one (place unchanged) keeps its time.
+        if let p = place {
+            if case .edit(let old) = target, old.place == p { due = old.due } else { due = Place.notYet }
+            PlaceWatcher.shared.askForAlways()
+        }
         switch target {
         case .new, .spoken:
             store.add(Reminder(title: text, due: due, repeats: repeats, nudgeMinutes: nudge, shortcut: shortcut, tickWhenRun: tickWhenRun, colour: colour, pausedUntil: pausedUntil,
