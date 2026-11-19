@@ -1,4 +1,4 @@
-# AMS Persistent Reminder: specification (0.3.1, build 5)
+# AMS Persistent Reminder: specification (0.3.2, build 6)
 
 Name under the icon: AMS Reminder. Bundle id: com.schabbauer.AMSPersistentReminder. iPhone only, portrait, iOS 17+. Positive, calm, Apple look; Apple's standard text sizes; compact rows.
 
@@ -41,7 +41,7 @@ Two tabs with large hand-drawn icons: Reminders (orange bell) and Settings (gear
 - Big title "Reminders"; today's date under it.
 - No strip under the date (the old "2 done · 4 to go today" line and its `today-pill` are removed). Instead a small round button `done-button` at the bottom right, beside the "New reminder" button: the green ring of today (done today of done today + still to go today) with the number done today inside it. Tap opens Done.
 - Groups, each sorted by time, empty ones hidden: Waiting for you (orange; due <= now), Today (blue), Tomorrow, Later. Calm empty state when there is nothing.
-- Row: round tick circle (tap = done, short happy buzz); title; small grey line: waiting = "Nudging every 5 min · 3rd nudge", repeating = "Every day" / "Every Thursday" / "Every month", otherwise "Nudge every 10 min"; time on the right. A row with a shortcut shows a small purple play mark just before the time. A repeating reminder with a colour shows a thin colour bar (`colour-bar-<title>`) at the left of the row, its tick circle in that colour and its small repeat mark in that colour. A reminder with Repeat Never never shows a colour.
+- Row: round tick circle (tap = done, short happy buzz); title; small grey line: waiting = "Nudging every 5 min · 3rd nudge", repeating = "Every day" / "Every Thursday" / "Every month", otherwise "Nudge every 10 min"; time on the right. A row with a shortcut shows a small purple play mark just before the time. A repeating reminder with a colour stands in a frame of its colour (2 pt line, corner 12, 2 pt inside the row) with a 10 % tint of it inside (0.3.2), shows a thin colour bar (`colour-bar-<title>`) at the left of the row, its tick circle in that colour and its small repeat mark in that colour. A reminder with Repeat Never never shows a colour.
 - Tap a row = change it. Swipe left = delete. Swipe right = tick off. Press and hold (0.5 s) a row with a shortcut = short buzz (haptic), then the shortcut runs (see section 6a) and, if tickWhenRun is on, the reminder is ticked off. Rows without a shortcut: nothing happens on press and hold.
 - Big full-colour orange button "New reminder" at the bottom.
 
@@ -92,3 +92,4 @@ Two tabs with large hand-drawn icons: Reminders (orange bell) and Settings (gear
 0.3, build 4 (19 Nov 2026): switch "Tick off when it runs" (`tickWhenRun`, default on, also for old reminders) ticks the reminder off when its shortcut runs from the row or the nudge; "Pick" button and "Your shortcuts" list page filled by the helper shortcut "AMS Reminder List" (link back `amsreminder://shortcuts`); Settings "Shortcuts" part; file format still 1.
 0.3 also: the "done · to go" strip is replaced by a round `done-button` (green ring with the number done) at the bottom right; repeating reminders can wear one of eight colours (`colour`, bar, tick circle and repeat mark), format still 1.
 0.3.1 (19 Nov 2026): fixed the crash when a nudge button is pressed (delegate answers on the main thread); "Add the helper" now uses the share sheet (the import link is refused by iOS 27).
+0.3.2 (19 Nov 2026): a coloured repeating reminder gets a coloured frame and a faint tint (his ask: the bar alone was too subtle).

@@ -114,7 +114,7 @@ struct RemindersScreen: View {
                     .contentShape(Rectangle())
                     .onTapGesture { editing = .edit(r) }
                     .onLongPressGesture(minimumDuration: 0.5) { runShortcut(r) }
-                    .listRowBackground(mark ? Theme.waitingRow : Color(.secondarySystemGroupedBackground))
+                    .listRowBackground(rowBackground(r, waiting: mark))
                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                         Button { tickWithJoy(r.id) } label: { Text("Done") }.tint(Theme.green)
                     }
@@ -130,6 +130,23 @@ struct RemindersScreen: View {
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(colour)
             }
+        }
+    }
+
+    /// A coloured reminder gets a frame in its colour and a faint tint inside (0.3.2, his ask: the bar alone was too subtle).
+    @ViewBuilder
+    private func rowBackground(_ r: Reminder, waiting: Bool) -> some View {
+        let base = waiting ? Theme.waitingRow : Color(.secondarySystemGroupedBackground)
+        if let c = r.shownColour {
+            base.overlay {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Theme.row(c).opacity(0.10))
+                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.row(c), lineWidth: 2))
+                    .padding(2)
+            }
+            .accessibilityIdentifier("colour-frame-\(r.title)")
+        } else {
+            base
         }
     }
 

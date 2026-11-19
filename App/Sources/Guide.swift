@@ -30,7 +30,7 @@ enum Guide {
             "On the left is a round circle. Tap it and the reminder is done. You feel a short, happy buzz.",
             "In the middle are the title and a small grey line. A waiting reminder says, for example, “Nudging every 5 min · 3rd nudge”. Other ones say how they repeat (“Every day”, “Every Thursday”) or “Nudge every 10 min”.",
             "On the right is the time.",
-            "A repeating reminder with a colour shows a thin bar in that colour at the left of its row, and its tick circle and its small repeat mark have the colour too. A one-off reminder never shows a colour.",
+            "A repeating reminder with a colour stands in a frame of that colour, with a faint tint of it inside. A thin bar in that colour sits at the left of the row, and its tick circle and its small repeat mark have the colour too. A one-off reminder never shows a colour.",
             "If the reminder has a shortcut, a small purple play mark stands just before the time.",
             "Tap a row to change it. Swipe it to the left to delete it. Swipe it to the right to tick it off.",
             "Press and hold a row with a play mark for half a second. You feel a short buzz, and its shortcut runs. If “Tick off when it runs” is on for that reminder, it is ticked off at the same moment. A row without a shortcut does nothing when you press and hold it.",
@@ -91,6 +91,9 @@ enum Guide {
     ]
 
     static let news: [Release] = [
+        Release(version: "0.3.2", date: "19 Nov 2026", items: [
+            "Changed: a coloured reminder now stands in a frame of its colour, with a faint tint of that colour inside, so you see the colour at a glance. Before, only a thin bar, the circle and the repeat mark were coloured, which was too subtle. The bar, the circle and the repeat mark stay.",
+        ]),
         Release(version: "0.3.1", date: "19 Nov 2026", items: [
             "Fixed: the app could close by itself when you pressed a button on a nudge (Done, In 10 minutes, In 1 hour, This evening, Run). The button still did its job, but the app crashed while answering. This was there since 0.1 and is now fixed.",
             "Fixed: “Add the helper” showed “Import Failed – the shortcut URL provided was invalid”, because Apple no longer lets an app add a shortcut by link. Now it opens the iPhone's share list: choose Shortcuts there, then “Add Shortcut”.",
