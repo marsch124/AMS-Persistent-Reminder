@@ -212,7 +212,8 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
     public var interval: TimeInterval { TimeInterval(max(1, nudgeMinutes) * 60) }
 
     /// Are its nudges paused right now?
-    public func isPaused(at now: Date) -> Bool { Pause.isOn(pausedUntil, at: now) }
+    /// 0.5: a pause with a start (`pausedFrom`, the weekend) only counts from that start.
+    public func isPaused(at now: Date) -> Bool { Pause.isOn(pausedUntil, at: now) && (pausedFrom.map { $0 <= now } ?? true) }
 
     /// Has its time come?
     public func isWaiting(at now: Date) -> Bool { due <= now }
@@ -220,13 +221,17 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
     /// How many nudges it has given so far (the first one comes at the due time).
     public func nudgesSoFar(at now: Date) -> Int {
         guard due <= now else { return 0 }
-        return Int(now.timeIntervalSince(due) / interval) + 1
+        let elapsed = now.timeIntervalSince(due)
+        // 0.5 (pick 2): from the 4th nudge on, a "louder" reminder nudges twice as often.
+        let before = Double(Reminder.louderFrom - 1) * interval
+        if louder && elapsed >= before { return Reminder.louderFrom + Int((elapsed - before) / louderInterval) }
+        return Int(elapsed / interval) + 1
     }
 
     /// When the next nudge comes.
     public func nextNudge(after now: Date) -> Date {
         guard due <= now else { return due }
-        return due.addingTimeInterval(Double(nudgesSoFar(at: now)) * interval)
+        return nudgeDate(nudgesSoFar(at: now) + 1)
     }
 
     /// The next time a repeating reminder is for, strictly after `now`, counted from its own due
@@ -364,7 +369,7 @@ public struct ReminderList: Codable, Equatable, Sendable {
 
     /// Pauses a reminder's nudges until a time, or ends the pause (nil). The reminder itself stays as it is.
     public mutating func pause(_ id: UUID, until date: Date?) {
-        if let i = reminders.firstIndex(where: { $0.id == id }) { reminders[i].pausedUntil = date }
+        if let i = reminders.firstIndex(where: { $0.id == id }) { reminders[i].pausedUntil = date; reminders[i].pausedFrom = nil }
     }
 
     /// Moves a reminder to a later time ("In 10 minutes" on a nudge). Its nudges start again from there.

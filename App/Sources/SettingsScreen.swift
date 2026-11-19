@@ -52,6 +52,8 @@ struct SettingsScreen: View {
                         }
                         PauseChoice(until: Binding(get: { pausedAll == 0 ? nil : Date(timeIntervalSinceReferenceDate: pausedAll) },
                                                    set: { pausedAll = $0?.timeIntervalSinceReferenceDate ?? 0; store.refresh() }),
+                                    from: Binding(get: { Nudger.allPausedFrom },
+                                                  set: { UserDefaults.standard.set($0?.timeIntervalSinceReferenceDate ?? 0, forKey: Nudger.pausedFromKey) }),
                                     allowOff: true, id: "all-nudges")
                     }
                     if allowed == false {

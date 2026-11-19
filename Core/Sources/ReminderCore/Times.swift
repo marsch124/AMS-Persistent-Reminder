@@ -68,9 +68,29 @@ public enum Pause {
         at(hour: QuickTime.morningHour, minute: 0, on: day, calendar: calendar)
     }
 
-    /// "until tomorrow 08:00", "until Mon 23 Nov, 08:00", "until today 08:00", "until you turn them on".
-    public static func text(_ until: Date, at now: Date, calendar: Calendar = .current) -> String {
+    /// 0.5 (Weekend): no nudges on Saturday and Sunday. From Saturday 00:00 (from now, when it is already the weekend)
+    /// until Monday 08:00. `from` is always set: a weekend pause is told apart from "Pick a day" by having it.
+    public static func weekend(after now: Date, calendar: Calendar = .current) -> (from: Date?, until: Date) {
+        let weekday = calendar.component(.weekday, from: now)   // 1 = Sunday … 7 = Saturday
+        let today = calendar.startOfDay(for: now)
+        let from: Date
+        let monday: Date
+        if weekday == 7 || weekday == 1 {
+            from = now
+            monday = calendar.date(byAdding: .day, value: weekday == 7 ? 2 : 1, to: today) ?? today
+        } else {
+            let saturday = calendar.date(byAdding: .day, value: 7 - weekday, to: today) ?? today
+            from = saturday
+            monday = calendar.date(byAdding: .day, value: 2, to: saturday) ?? saturday
+        }
+        return (from, morning(of: monday, calendar: calendar))
+    }
+
+    /// "until tomorrow 08:00", "until Mon 23 Nov, 08:00", "until today 08:00", "until you turn them on";
+    /// with a start (the weekend pause) "for the weekend".
+    public static func text(_ until: Date, at now: Date, from: Date? = nil, calendar: Calendar = .current) -> String {
         if until >= forever { return "until you turn them on" }
+        if from != nil { return "for the weekend" }
         let f = DateFormatter()
         f.calendar = calendar
         f.locale = Locale(identifier: "en_GB")
@@ -89,10 +109,13 @@ public struct PlannedNudge: Equatable, Sendable {
     public let reminderID: UUID
     public let date: Date
     public let number: Int
-    public init(reminderID: UUID, date: Date, number: Int) {
+    /// 0.5 (pick 2): this one is a louder one (stronger sound).
+    public let louder: Bool
+    public init(reminderID: UUID, date: Date, number: Int, louder: Bool = false) {
         self.reminderID = reminderID
         self.date = date
         self.number = number
+        self.louder = louder
     }
 }
 
@@ -101,28 +124,57 @@ public struct PlannedNudge: Equatable, Sendable {
 public enum NudgePlan {
     public static let limit = 60
 
-    /// `allPausedUntil`: every nudge is paused until then (0.4, Settings); nudges are planned only from its end.
-    public static func plan(_ reminders: [Reminder], from realNow: Date, allPausedUntil: Date? = nil, limit: Int = NudgePlan.limit) -> [PlannedNudge] {
+    /// A time with no nudges: a pause (`from` nil = already started) or quiet hours.
+    /// `allPausedUntil` / `allPausedFrom`: every nudge is paused (0.4, Settings; 0.5 weekend); `quiet`: the daily quiet window.
+    /// A nudge that falls inside one is dropped, and a reminder whose nudges were held back nudges once when it ends.
+    public static func plan(_ reminders: [Reminder], from realNow: Date, allPausedUntil: Date? = nil, allPausedFrom: Date? = nil,
+                            quiet: QuietHours? = nil, limit: Int = NudgePlan.limit, calendar: Calendar = .current) -> [PlannedNudge] {
         var all: [PlannedNudge] = []
-        let start = Pause.isOn(allPausedUntil, at: realNow) ? allPausedUntil! : realNow
-        if start >= Pause.forever { return [] }
         for r in reminders {
-            // A paused reminder starts again where its own pause ends (0.4).
-            let now = Pause.isOn(r.pausedUntil, at: start) ? r.pausedUntil! : start
-            if now >= Pause.forever { continue }
-            // The first nudge still to come, and its number.
-            var number = r.due > now ? 1 : r.nudgesSoFar(at: now) + 1
-            var date = r.due.addingTimeInterval(Double(number - 1) * r.interval)
-            // When a pause ends on a reminder whose time has come, it nudges right at that moment.
-            if now > realNow && r.due < now {
-                all.append(PlannedNudge(reminderID: r.id, date: now, number: number - 1))
+            var windows: [(from: Date, until: Date)] = []
+            if let u = allPausedUntil, u > realNow { windows.append((allPausedFrom ?? .distantPast, u)) }
+            if let u = r.pausedUntil, u > realNow { windows.append((r.pausedFrom ?? .distantPast, u)) }
+
+            /// Where the nudges are held back at `date` until, or nil when `date` is free (chains one window into the next).
+            func blockEnd(_ date: Date) -> Date? {
+                var d = date
+                var end: Date?
+                for _ in 0..<12 {
+                    var e: Date?
+                    for w in windows where w.from <= d && d < w.until { e = max(e ?? w.until, w.until) }
+                    if let q = quiet?.endIfInside(d, calendar: calendar) { e = max(e ?? q, q) }
+                    guard let next = e, next > d else { break }
+                    end = next
+                    if next >= Pause.forever { break }
+                    d = next
+                }
+                return end
             }
-            // No more than `limit` per reminder is ever needed.
-            for _ in 0..<limit {
-                all.append(PlannedNudge(reminderID: r.id, date: date, number: number))
+
+            let stop = r.stopTime(calendar: calendar)
+            var owed: [Date: Int] = [:]
+            if let e = blockEnd(realNow), e < Pause.forever, r.due < e { owed[e] = max(1, r.nudgesSoFar(at: e)) }
+            var number = r.due > realNow ? 1 : r.nudgesSoFar(at: realNow) + 1
+            var planned: [PlannedNudge] = []
+            var steps = 0
+            while planned.count < limit && steps < 5000 {
+                steps += 1
+                let date = r.nudgeDate(number)
+                if let stop, date > stop { break }
+                if let e = blockEnd(date) {
+                    if e >= Pause.forever { owed.removeAll(); break }
+                    owed[e] = max(1, r.nudgesSoFar(at: e))
+                    let k = r.nudgesSoFar(at: e)
+                    number = max(number + 1, r.nudgeDate(k) == e ? k : k + 1)
+                    continue
+                }
+                planned.append(PlannedNudge(reminderID: r.id, date: date, number: number, louder: r.isLouder(number)))
                 number += 1
-                date = date.addingTimeInterval(r.interval)
             }
+            for (e, n) in owed where e <= (stop ?? .distantFuture) && !planned.contains(where: { $0.date == e }) {
+                planned.append(PlannedNudge(reminderID: r.id, date: e, number: n, louder: r.isLouder(n)))
+            }
+            all.append(contentsOf: planned)
         }
         return Array(all.sorted { ($0.date, $0.number) < ($1.date, $1.number) }.prefix(limit))
     }
@@ -161,10 +213,14 @@ public enum Words {
     /// The small grey line under a reminder on the main screen.
     /// While all nudges are paused (`allPausedUntil`), a waiting one says so instead of "Nudging every …".
     public static func rowLine(_ r: Reminder, at now: Date, allPausedUntil: Date? = nil, calendar: Calendar = .current) -> String {
-        let own = r.isPaused(at: now) ? r.pausedUntil : nil
+        // A weekend pause already set but not begun (`pausedFrom` ahead) shows too.
+        let own = Pause.isOn(r.pausedUntil, at: now) ? r.pausedUntil : nil
         let all = Pause.isOn(allPausedUntil, at: now) ? allPausedUntil : nil
         if let until = [own, all].compactMap({ $0 }).max(), own != nil || r.isWaiting(at: now) {
-            return "Paused \(Pause.text(until, at: now, calendar: calendar))"
+            return "Paused \(Pause.text(until, at: now, from: until == own ? r.pausedFrom : nil, calendar: calendar))"
+        }
+        if r.hasStopped(at: now, calendar: calendar), let s = r.stopAt {
+            return "Stopped nudging at \(String(format: "%02d:%02d", s / 60, s % 60))"
         }
         if r.isWaiting(at: now) {
             return "Nudging every \(r.nudgeMinutes) min · \(ordinal(r.nudgesSoFar(at: now))) nudge"
@@ -178,7 +234,18 @@ public enum Words {
         f.calendar = calendar
         f.timeZone = calendar.timeZone
         f.dateFormat = "HH:mm"
-        if number <= 1 { return "It's time. I'll nudge you again in \(r.nudgeMinutes) min until you tick it off." }
-        return "Since \(f.string(from: r.due)) · \(ordinal(number)) nudge. Next one in \(r.nudgeMinutes) min."
+        var body: String
+        if number <= 1 {
+            body = "It's time. I'll nudge you again in \(r.nudgeMinutes) min until you tick it off."
+        } else if r.isLouder(number) {
+            let m = r.louderInterval / 60
+            let every = m == m.rounded() ? "\(Int(m))" : "\(Int(m))½"
+            body = "Since \(f.string(from: r.due)) · \(ordinal(number)) nudge. I'll keep at it every \(every) min."
+        } else {
+            body = "Since \(f.string(from: r.due)) · \(ordinal(number)) nudge. Next one in \(r.nudgeMinutes) min."
+        }
+        // 0.5 (pick 16): the reminder's own few words close the nudge.
+        if let note = r.note, !note.isEmpty { body += "\n\(note)" }
+        return body
     }
 }

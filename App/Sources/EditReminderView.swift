@@ -18,6 +18,7 @@ struct EditReminderView: View {
     @State private var tickWhenRun = true
     @State private var colour: RowColour?
     @State private var pausedUntil: Date?
+    @State private var pausedFrom: Date?
     // 0.5 fields (each part's own file in Parts/ shows them).
     @State private var note = ""
     @State private var action: TapAction?
@@ -92,7 +93,7 @@ struct EditReminderView: View {
                     NudgeMoreSection(sound: $sound, louder: $louder, stopAt: $stopAt)
 
                     heading("Pause nudges")
-                    if filled { PauseChoice(until: $pausedUntil, allowOff: false) }
+                    if filled { PauseChoice(until: $pausedUntil, from: $pausedFrom, allowOff: false) }
 
                     heading("Shortcut")
                     HStack(spacing: 8) {
@@ -201,6 +202,7 @@ struct EditReminderView: View {
             tickWhenRun = r.tickWhenRun
             colour = r.colour
             pausedUntil = r.pausedUntil
+            pausedFrom = r.pausedFrom
             note = r.note ?? ""
             action = r.action
             sound = r.sound
@@ -223,7 +225,7 @@ struct EditReminderView: View {
         switch target {
         case .new, .spoken:
             store.add(Reminder(title: text, due: due, repeats: repeats, nudgeMinutes: nudge, shortcut: shortcut, tickWhenRun: tickWhenRun, colour: colour, pausedUntil: pausedUntil,
-                               note: note, action: action, sound: sound, louder: louder, stopAt: stopAt, every: every, weekdays: weekdays, afterDone: afterDone, place: place))
+                               note: note, action: action, sound: sound, louder: louder, stopAt: stopAt, every: every, weekdays: weekdays, afterDone: afterDone, place: place).pausing(from: pausedFrom))
         case .edit(var r):
             r.title = text
             r.due = due
@@ -233,6 +235,7 @@ struct EditReminderView: View {
             r.tickWhenRun = tickWhenRun
             r.colour = colour
             r.pausedUntil = pausedUntil
+            r.pausedFrom = pausedUntil == nil ? nil : pausedFrom
             r.note = Reminder.cleanShortcut(note)
             r.action = action
             r.sound = sound
