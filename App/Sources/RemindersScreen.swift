@@ -17,19 +17,6 @@ struct RemindersScreen: View {
         NavigationStack {
             List {
                 Section {
-                    Button { showDone = true } label: {
-                        HStack(spacing: 10) {
-                            DoneRing(done: counts.done, total: counts.done + counts.toGo, lineWidth: 4)
-                                .frame(width: 24, height: 24)
-                            (Text("\(counts.done) done").bold() + Text(" · \(counts.toGo) to go today"))
-                                .font(.subheadline)
-                            Spacer()
-                            ControlMarkView(.chevron, size: 14, colour: .secondary)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("today-pill")
                 } header: {
                     Text(Theme.longDay(now)).font(.subheadline).foregroundStyle(.secondary).textCase(nil)
                 }
@@ -68,6 +55,7 @@ struct RemindersScreen: View {
             .listSectionSpacing(.compact)
             .navigationTitle("Reminders")
             .safeAreaInset(edge: .bottom) {
+              HStack(spacing: 10) {
                 Button { editing = .new } label: {
                     HStack(spacing: 8) {
                         ControlMarkView(.add, size: 20)
@@ -78,8 +66,25 @@ struct RemindersScreen: View {
                     .background(Theme.orangeFill, in: RoundedRectangle(cornerRadius: 14))
                 }
                 .buttonStyle(.plain)
-                .padding(.horizontal, 16).padding(.bottom, 8)
                 .accessibilityIdentifier("new-reminder")
+                // Done is a small round button at the bottom right (his pick, 0.3): the green ring of today
+                // with the number done inside. It opens the Done list.
+                Button { showDone = true } label: {
+                    ZStack {
+                        Circle().fill(Color(.secondarySystemGroupedBackground))
+                        DoneRing(done: counts.done, total: counts.done + counts.toGo, lineWidth: 4)
+                            .padding(5)
+                        Text("\(counts.done)").font(.subheadline.weight(.bold)).monospacedDigit()
+                            .foregroundStyle(Theme.green)
+                    }
+                    .frame(width: 50, height: 50)
+                    .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Done: \(counts.done) done, \(counts.toGo) to go today")
+                .accessibilityIdentifier("done-button")
+              }
+              .padding(.horizontal, 16).padding(.bottom, 8)
             }
             .sheet(item: $editing) { target in
                 EditReminderView(target: target)
@@ -133,11 +138,11 @@ struct RemindersScreen: View {
         withAnimation { store.tick(id) }
     }
 
-    /// Press and hold a row: its shortcut runs (rows without one stay still).
+    /// Press and hold a row: its shortcut runs, and it is ticked off when it is set to (rows without one stay still).
     private func runShortcut(_ r: Reminder) {
-        guard let url = r.shortcutURL else { return }
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        UIApplication.shared.open(url)
+        var url: URL?
+        withAnimation { url = store.runShortcut(r.id) }
+        if let url { UIApplication.shared.open(url) }
     }
 
     private func openNotificationSettings() {
@@ -158,6 +163,11 @@ struct ReminderRow: View {
 
     var body: some View {
         HStack(spacing: 11) {
+            if let c = reminder.shownColour {
+                Capsule().fill(Theme.row(c)).frame(width: 4, height: 30)
+                    .padding(.trailing, -4)
+                    .accessibilityIdentifier("colour-bar-\(reminder.title)")
+            }
             Button {
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 withAnimation(.spring(duration: 0.25)) { ticked = true }
@@ -170,7 +180,7 @@ struct ReminderRow: View {
                     if ticked {
                         ControlMarkView(.ticked, size: 28, colour: Theme.green)
                     } else {
-                        ControlMarkView(.circle, size: 28, colour: waiting ? Theme.orange : Color(.tertiaryLabel))
+                        ControlMarkView(.circle, size: 28, colour: waiting ? Theme.orange : reminder.shownColour.map(Theme.row) ?? Color(.tertiaryLabel))
                     }
                 }
                 .frame(width: 34, height: 34)
@@ -185,7 +195,9 @@ struct ReminderRow: View {
                     .strikethrough(ticked, color: .secondary)
                 HStack(spacing: 4) {
                     if waiting { AppMarkView(.bell, size: 12) }
-                    else if reminder.repeats != .never { AppMarkView(.repeat, size: 12) }
+                    else if reminder.repeats != .never {
+                        AppMarkView(.repeat, size: 12, colour: reminder.shownColour.map(Theme.row) ?? .secondary)
+                    }
                     Text(Words.rowLine(reminder, at: now))
                 }
                 .font(.footnote)

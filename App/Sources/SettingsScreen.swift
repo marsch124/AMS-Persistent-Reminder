@@ -59,6 +59,22 @@ struct SettingsScreen: View {
                 }
 
                 Section {
+                    NavigationLink { ShortcutPicker() } label: {
+                        HStack(spacing: 12) {
+                            ControlMarkView(.play, size: 24, colour: Theme.purple)
+                            Text("Your shortcuts")
+                            Spacer()
+                            Text(store.shortcutNames.isEmpty ? "None yet" : "\(store.shortcutNames.count) loaded").foregroundStyle(.secondary)
+                        }
+                    }
+                    .accessibilityIdentifier("settings-shortcuts")
+                } header: {
+                    Text("Shortcuts").foregroundStyle(Theme.purple)
+                } footer: {
+                    Text("Load them once with the helper, then pick them on each reminder.")
+                }
+
+                Section {
                     NavigationLink { GuideView() } label: {
                         HStack(spacing: 12) { AppMarkView(.question, size: 24, colour: Theme.blue); Text("How it works") }
                     }

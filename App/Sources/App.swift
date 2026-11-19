@@ -20,6 +20,7 @@ struct PersistentReminderApp: App {
             RootView()
                 .environmentObject(store)
                 .tint(Theme.orange)
+                .onOpenURL { store.open($0) }
         }
         .onChange(of: phase) { _, new in
             if new == .active { store.refresh(); Nudger.openPendingShortcut() }
@@ -37,6 +38,21 @@ enum Theme {
     // Filled buttons keep a deep colour by night too, so white words on them stay easy to read.
     static let orangeFill = dynamic(0xE8603A, 0xE0562F)
     static let blueFill = dynamic(0x2F7CF6, 0x2F6FE0)
+    static let purpleFill = dynamic(0x7C4DEB, 0x6D3FE0)
+
+    /// A repeating reminder's own colour, by day and by night.
+    static func row(_ c: RowColour) -> Color {
+        switch c {
+        case .red: return dynamic(0xE5484D, 0xFF6369)
+        case .orange: return dynamic(0xF07A2A, 0xFF9B57)
+        case .yellow: return dynamic(0xD9A400, 0xFFD23F)
+        case .green: return dynamic(0x24985D, 0x4ADE80)
+        case .teal: return dynamic(0x12A1A1, 0x3DD6D0)
+        case .blue: return dynamic(0x2F7CF6, 0x5A9BFF)
+        case .purple: return dynamic(0x7C4DEB, 0xA78BFA)
+        case .pink: return dynamic(0xE0479E, 0xFF7AC6)
+        }
+    }
 
     static func dynamic(_ light: UInt32, _ dark: UInt32) -> Color {
         Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: dark) : UIColor(rgb: light) })

@@ -53,6 +53,33 @@ final class ReminderUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["shortcut-mark-Call Andreas"].waitForExistence(timeout: 5))
     }
 
+    /// 0.3: pick the shortcut from the list; the "Tick off when it runs" switch shows up, on.
+    func testPickAShortcutFromTheList() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-sample"]
+        app.launch()
+        app.buttons["new-reminder"].tap()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "title-field").firstMatch.waitForExistence(timeout: 5))
+        app.typeText("Call Andreas\n")
+        app.swipeUp()
+        app.buttons["pick-shortcut"].tap()
+        let option = app.buttons["shortcut-option-Call Andreas Bjurling"]
+        XCTAssertTrue(option.waitForExistence(timeout: 5))
+        option.tap()
+        XCTAssertEqual(app.textFields["shortcut-field"].value as? String, "Call Andreas Bjurling")
+        let toggle = app.switches["tick-when-run"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        XCTAssertEqual(toggle.value as? String, "1")
+        app.swipeDown()
+        app.buttons["Daily"].tap()
+        app.buttons["colour-teal"].tap()
+        app.buttons["save"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["shortcut-mark-Call Andreas"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["colour-bar-Call Andreas"].exists)
+        app.buttons["done-button"].tap()
+        XCTAssertTrue(app.buttons["close-done"].waitForExistence(timeout: 5))
+    }
+
     /// The heart of the app: a reminder whose time has come pops up as a nudge.
     /// Local only, on request (NUDGE_TEST=1): the simulator did not show the permission question on 19 Nov 2026.
     func testANudgePopsUp() throws {
@@ -122,9 +149,18 @@ final class ReminderUITests: XCTestCase {
         app.buttons["new-reminder"].tap()
         let field = app.descendants(matching: .any).matching(identifier: "title-field").firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 5))
-        app.typeText("Take vitamins")
+        app.typeText("Take vitamins\n")
         app.buttons["quick-tomorrowMorning"].tap()
+        app.buttons["Daily"].tap()
+        app.buttons["colour-pink"].tap()
         shot("2-new")
+        app.swipeUp()
+        app.buttons["pick-shortcut"].tap()
+        XCTAssertTrue(app.buttons["shortcut-option-Coffee timer"].waitForExistence(timeout: 5))
+        shot("2b-picker")
+        app.buttons["shortcut-option-Coffee timer"].tap()
+        XCTAssertTrue(app.switches["tick-when-run"].waitForExistence(timeout: 5))
+        shot("2c-switch")
         app.buttons["cancel"].tap()
         app.buttons["tab-settings"].tap()
         XCTAssertTrue(app.buttons["settings-done"].waitForExistence(timeout: 5))

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 import ReminderCore
 
 /// Keeps the list, reads and writes it on this iPhone, and tells the nudges when anything changes.
@@ -28,6 +29,7 @@ final class Store: ObservableObject {
         backupFolder = base.appendingPathComponent("Safety copies", isDirectory: true)
         if isTesting {
             list = args.contains("-sample") ? Sample.list(now: now) : ReminderList()
+            shortcutNames = args.contains("-sample") ? ["Call Andreas Bjurling", "Coffee timer", "Play morning music", "Weather today"] : []
         } else {
             try? FileManager.default.createDirectory(at: backupFolder, withIntermediateDirectories: true)
             load()
@@ -41,6 +43,33 @@ final class Store: ObservableObject {
     func delete(_ id: UUID) { change { $0.delete(id) } }
     func snooze(_ id: UUID, to date: Date) { change { $0.snooze(id, to: date) } }
     func bringBack(_ entryID: UUID) { change { $0.bringBack(entryID) } }
+
+    /// Its shortcut runs: ticks it off when it is set to (with the happy buzz), and returns the link
+    /// for the Shortcuts app.
+    func runShortcut(_ id: UUID) -> URL? {
+        guard let r = list.reminder(id), r.shortcutURL != nil else { return nil }
+        var url: URL?
+        let t = Date()
+        change { url = $0.runShortcut(id, at: t) }
+        if r.ticksWhenRun {
+            Nudger.clearDelivered(for: id)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+        } else {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
+        return url
+    }
+
+    // MARK: His shortcuts (sent back by the helper shortcut, kept for the picker)
+
+    @Published private(set) var shortcutNames: [String] = UserDefaults.standard.stringArray(forKey: "shortcutNames") ?? []
+
+    /// A link opened the app: the helper's list of shortcut names.
+    func open(_ url: URL) {
+        guard let names = ShortcutNames.read(url) else { return }
+        shortcutNames = names
+        if !isTesting { UserDefaults.standard.set(names, forKey: "shortcutNames") }
+    }
 
     func tick(_ id: UUID) {
         let t = Date()
@@ -126,9 +155,9 @@ enum Sample {
         let cal = Calendar.current
         let tomorrow = cal.date(byAdding: .day, value: 1, to: now)!
         var l = ReminderList(reminders: [
-            Reminder(title: "Take vitamins", due: now.addingTimeInterval(-12 * 60), repeats: .daily, nudgeMinutes: 5),
+            Reminder(title: "Take vitamins", due: now.addingTimeInterval(-12 * 60), repeats: .daily, nudgeMinutes: 5, colour: .green),
             Reminder(title: "Call the dentist", due: now.addingTimeInterval(2 * 3600), nudgeMinutes: 10),
-            Reminder(title: "Water the plants", due: now.addingTimeInterval(5 * 3600), repeats: .weekly, nudgeMinutes: 15),
+            Reminder(title: "Water the plants", due: now.addingTimeInterval(5 * 3600), repeats: .weekly, nudgeMinutes: 15, colour: .teal),
             Reminder(title: "Pay the parking", due: at(hour: 9, minute: 0, on: tomorrow), nudgeMinutes: 15),
         ])
         l.done = [

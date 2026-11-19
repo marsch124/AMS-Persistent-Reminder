@@ -108,8 +108,8 @@ enum Nudger {
         case .evening?: store.snooze(reminder, to: QuickTime.evening.date(from: now))
         case .tomorrowMorning?: store.snooze(reminder, to: QuickTime.tomorrowMorning.date(from: now))
         case .shortcut?:
-            // The reminder stays and keeps nudging; the app hands over to the Shortcuts app.
-            pendingShortcut = store.list.reminder(reminder)?.shortcutURL
+            // Ticks it off when it is set to (0.3), then the app hands over to the Shortcuts app.
+            pendingShortcut = store.runShortcut(reminder)
             openPendingShortcut()
             // Launched from a closed state, the app may not be in front yet; try again shortly.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { openPendingShortcut() }

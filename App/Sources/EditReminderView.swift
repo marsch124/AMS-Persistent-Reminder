@@ -15,6 +15,9 @@ struct EditReminderView: View {
     @State private var repeats: Repeat = .never
     @State private var nudge = 5
     @State private var shortcut = ""
+    @State private var tickWhenRun = true
+    @State private var colour: RowColour?
+    @State private var picking = false
     @State private var pickingDay = false
     @State private var askDelete = false
     @FocusState private var titleFocused: Bool
@@ -63,6 +66,7 @@ struct EditReminderView: View {
                         ForEach(Repeat.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)
+                    if repeats != .never { colourDots }
 
                     heading("Nudge me every")
                     Picker("Nudge me every", selection: $nudge) {
@@ -84,12 +88,22 @@ struct EditReminderView: View {
                             .accessibilityIdentifier("shortcut-field")
                         if let url = Reminder.shortcutURL(for: shortcut) {
                             Button("Try it") { UIApplication.shared.open(url) }
-                                .buttonStyle(.borderedProminent).tint(Theme.purple).controlSize(.small)
+                                .buttonStyle(.bordered).tint(Theme.purple).controlSize(.small)
                                 .accessibilityIdentifier("try-shortcut")
                         }
+                        Button("Pick") { picking = true }
+                            .buttonStyle(.borderedProminent).tint(Theme.purpleFill).controlSize(.small)
+                            .accessibilityIdentifier("pick-shortcut")
                     }
                     .padding(.horizontal, 14).padding(.vertical, 10)
                     .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                    if Reminder.cleanShortcut(shortcut) != nil {
+                        Toggle("Tick off when it runs", isOn: $tickWhenRun)
+                            .tint(Theme.green)
+                            .padding(.horizontal, 14).padding(.vertical, 6)
+                            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                            .accessibilityIdentifier("tick-when-run")
+                    }
                     HStack(spacing: 6) {
                         ControlMarkView(.play, size: 14, colour: Theme.purple)
                         Text("Press and hold the nudge or the row to run it.")
@@ -124,6 +138,16 @@ struct EditReminderView: View {
                     .accessibilityIdentifier("save")
                 }
             }
+            .sheet(isPresented: $picking) {
+                NavigationStack {
+                    ShortcutPicker { shortcut = $0 }
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("Cancel") { picking = false }.accessibilityIdentifier("picker-cancel")
+                            }
+                        }
+                }
+            }
             .confirmationDialog("Delete this reminder?", isPresented: $askDelete, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) {
                     if case .edit(let r) = target { store.delete(r.id) }
@@ -151,6 +175,8 @@ struct EditReminderView: View {
             repeats = r.repeats
             nudge = r.nudgeMinutes
             shortcut = r.shortcut ?? ""
+            tickWhenRun = r.tickWhenRun
+            colour = r.colour
         }
         pickingDay = dayChoice == .other
     }
@@ -162,16 +188,49 @@ struct EditReminderView: View {
         let due = self.due < Date() ? Date().addingTimeInterval(5) : self.due
         switch target {
         case .new:
-            store.add(Reminder(title: text, due: due, repeats: repeats, nudgeMinutes: nudge, shortcut: shortcut))
+            store.add(Reminder(title: text, due: due, repeats: repeats, nudgeMinutes: nudge, shortcut: shortcut, tickWhenRun: tickWhenRun, colour: colour))
         case .edit(var r):
             r.title = text
             r.due = due
             r.repeats = repeats
             r.nudgeMinutes = nudge
             r.shortcut = Reminder.cleanShortcut(shortcut)
+            r.tickWhenRun = tickWhenRun
+            r.colour = colour
             store.update(r)
         }
         dismiss()
+    }
+
+    /// A repeating reminder's colour: none, or one of eight.
+    private var colourDots: some View {
+        HStack(spacing: 0) {
+            dot(nil)
+            ForEach(RowColour.allCases, id: \.self) { dot($0) }
+        }
+        .padding(.horizontal, 6).padding(.vertical, 8)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func dot(_ c: RowColour?) -> some View {
+        let on = colour == c
+        return Button { colour = c } label: {
+            ZStack {
+                if let c {
+                    Circle().fill(Theme.row(c)).frame(width: 24, height: 24)
+                } else {
+                    Circle().stroke(Color(.tertiaryLabel), lineWidth: 1.9).frame(width: 22, height: 22)
+                    Rectangle().fill(Color(.tertiaryLabel)).frame(width: 1.9, height: 22).rotationEffect(.degrees(45))
+                }
+                if on { Circle().stroke(Color.primary, lineWidth: 2).frame(width: 32, height: 32) }
+            }
+            .frame(maxWidth: .infinity, minHeight: 34)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(c?.title ?? "No colour")
+        .accessibilityAddTraits(on ? .isSelected : [])
+        .accessibilityIdentifier("colour-\(c?.rawValue ?? "none")")
     }
 
     // MARK: When

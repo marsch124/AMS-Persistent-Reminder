@@ -136,4 +136,45 @@ final class ReminderCoreTests: XCTestCase {
         let back = try JSONDecoder().decode(Reminder.self, from: JSONEncoder().encode(r))
         XCTAssertEqual(back.shortcut, "Call Andreas Bjurling")
     }
+
+    // 0.3: running the shortcut ticks the reminder off, unless that is switched off; old files tick too.
+    func testRunningTheShortcutTicksItOff() throws {
+        var list = ReminderList()
+        let on = Reminder(title: "Call", due: d(19, 8), shortcut: "Call Andreas")
+        let off = Reminder(title: "Music", due: d(19, 8), shortcut: "Play", tickWhenRun: false)
+        let none = Reminder(title: "Plain", due: d(19, 8))
+        [on, off, none].forEach { list.add($0) }
+        XCTAssertNotNil(list.runShortcut(on.id, at: d(19, 9), calendar: cal))
+        XCTAssertNotNil(list.runShortcut(off.id, at: d(19, 9), calendar: cal))
+        XCTAssertNil(list.runShortcut(none.id, at: d(19, 9), calendar: cal))
+        XCTAssertEqual(list.reminders.map(\.title), ["Music", "Plain"])
+        XCTAssertEqual(list.done.map(\.reminder.title), ["Call"])
+        let old = #"{"title":"Old","shortcut":"Call"}"#
+        XCTAssertTrue(try JSONDecoder().decode(Reminder.self, from: Data(old.utf8)).ticksWhenRun)
+    }
+
+    // 0.3: the helper shortcut sends his shortcut names back; the picker sorts and searches them.
+    func testShortcutNamesFromTheHelper() {
+        let url = URL(string: "amsreminder://shortcuts?names=Play%20music%0ACall%20Andreas%20Bjurling%0A%0AAMS%20Reminder%20List%0Aair%20quality%0APlay%20music")!
+        let names = ShortcutNames.read(url)
+        XCTAssertEqual(names, ["air quality", "Call Andreas Bjurling", "Play music"])
+        XCTAssertNil(ShortcutNames.read(URL(string: "https://example.com/shortcuts?names=x")!))
+        XCTAssertEqual(ShortcutNames.filter(names ?? [], "andreas call"), ["Call Andreas Bjurling"])
+        XCTAssertEqual(ShortcutNames.addHelperURL?.absoluteString.hasPrefix("shortcuts://import-shortcut?url=https%3A%2F%2Fraw.githubusercontent.com"), true)
+    }
+
+    // 0.3: a repeating reminder can wear a colour; a one-off one never shows it; an unknown colour reads as none.
+    func testOnlyRepeatingRemindersShowTheirColour() throws {
+        var r = Reminder(title: "Call", due: Date(), repeats: .daily, colour: .teal)
+        XCTAssertEqual(r.shownColour, .teal)
+        r.repeats = .never
+        XCTAssertNil(r.shownColour)
+        let back = try JSONDecoder().decode(Reminder.self, from: JSONEncoder().encode(Reminder(title: "x", due: Date(), repeats: .weekly, colour: .pink)))
+        XCTAssertEqual(back.shownColour, .pink)
+        let odd = #"{"title":"Odd","repeats":"daily","colour":"gold"}"#
+        let read = try JSONDecoder().decode(Reminder.self, from: Data(odd.utf8))
+        XCTAssertEqual(read.title, "Odd")
+        XCTAssertNil(read.colour)
+    }
 }
+

@@ -17,6 +17,13 @@ public enum Repeat: String, Codable, CaseIterable, Sendable {
     }
 }
 
+/// The colours a repeating reminder can wear (0.3).
+public enum RowColour: String, Codable, CaseIterable, Sendable {
+    case red, orange, yellow, green, teal, blue, purple, pink
+
+    public var title: String { rawValue.capitalized }
+}
+
 /// One reminder. `due` is the next time it is for; once that time has passed it nudges every
 /// `nudgeMinutes` until it is ticked off.
 public struct Reminder: Codable, Identifiable, Equatable, Sendable {
@@ -28,9 +35,15 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
     public var created: Date
     /// The name of an Apple Shortcut to run from this reminder (press and hold its nudge or its row), or nil.
     public var shortcut: String?
+    /// Running the shortcut ticks the reminder off at the same moment (0.3; on unless switched off).
+    public var tickWhenRun: Bool
+    /// The colour a repeating reminder wears on its row (0.3), one of `RowColour`, or nil for none.
+    public var colour: RowColour?
 
-    public init(id: UUID = UUID(), title: String, due: Date, repeats: Repeat = .never, nudgeMinutes: Int = 5, created: Date = Date(), shortcut: String? = nil) {
+    public init(id: UUID = UUID(), title: String, due: Date, repeats: Repeat = .never, nudgeMinutes: Int = 5, created: Date = Date(), shortcut: String? = nil, tickWhenRun: Bool = true, colour: RowColour? = nil) {
         self.shortcut = Reminder.cleanShortcut(shortcut)
+        self.tickWhenRun = tickWhenRun
+        self.colour = colour
         self.id = id
         self.title = title
         self.due = due
@@ -41,7 +54,7 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
 
     // Tolerant reading: a field a later version adds never makes an older file unreadable, and a
     // missing field gets a sensible value instead of losing the reminder.
-    enum CodingKeys: String, CodingKey { case id, title, due, repeats, nudgeMinutes, created, shortcut }
+    enum CodingKeys: String, CodingKey { case id, title, due, repeats, nudgeMinutes, created, shortcut, tickWhenRun, colour }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = (try? c.decode(UUID.self, forKey: .id)) ?? UUID()
@@ -51,6 +64,9 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
         nudgeMinutes = (try? c.decode(Int.self, forKey: .nudgeMinutes)) ?? 5
         created = (try? c.decode(Date.self, forKey: .created)) ?? Date()
         shortcut = Reminder.cleanShortcut(try? c.decode(String.self, forKey: .shortcut))
+        tickWhenRun = (try? c.decode(Bool.self, forKey: .tickWhenRun)) ?? true
+        // A colour an older or newer version does not know reads as none, never as a broken reminder.
+        colour = try? c.decode(RowColour.self, forKey: .colour)
     }
 
     /// A shortcut name without spaces around it; an empty one means none.
@@ -74,6 +90,12 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
             .replacingOccurrences(of: "&", with: "%26")
         return parts.url
     }
+
+    /// The colour its row shows: only a repeating reminder wears one.
+    public var shownColour: RowColour? { repeats == .never ? nil : colour }
+
+    /// Does running its shortcut tick it off?
+    public var ticksWhenRun: Bool { shortcut != nil && tickWhenRun }
 
     /// Minutes between two nudges, never less than one.
     public var interval: TimeInterval { TimeInterval(max(1, nudgeMinutes) * 60) }
@@ -196,6 +218,15 @@ public struct ReminderList: Codable, Equatable, Sendable {
         done.removeAll { $0.id == entryID }
     }
 
+    /// Its shortcut was run: ticks it off when it is set to, and returns the link to hand to the
+    /// Shortcuts app (nil when it has no shortcut, so nothing happens).
+    @discardableResult
+    public mutating func runShortcut(_ id: UUID, at now: Date, calendar: Calendar = .current) -> URL? {
+        guard let r = reminder(id), let url = r.shortcutURL else { return nil }
+        if r.ticksWhenRun { tick(id, at: now, calendar: calendar) }
+        return url
+    }
+
     /// Moves a reminder to a later time ("In 10 minutes" on a nudge). Its nudges start again from there.
     public mutating func snooze(_ id: UUID, to date: Date) {
         if let i = reminders.firstIndex(where: { $0.id == id }) { reminders[i].due = date }
@@ -251,4 +282,46 @@ public struct Sections: Equatable, Sendable {
     public var later: [Reminder] = []
     public init() {}
     public var isEmpty: Bool { waiting.isEmpty && today.isEmpty && tomorrow.isEmpty && later.isEmpty }
+}
+
+/// The names of his shortcuts, sent back by the helper shortcut "AMS Reminder List".
+public enum ShortcutNames {
+    public static let helperName = "AMS Reminder List"
+    public static let scheme = "amsreminder"
+
+    /// Reads amsreminder://shortcuts?names=<one per line>: A–Z, no doubles, no empty ones, without the helper.
+    /// Nil when the link is not that one.
+    public static func read(_ url: URL) -> [String]? {
+        guard url.scheme == scheme, url.host == "shortcuts",
+              let parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
+        let raw = parts.queryItems?.first(where: { $0.name == "names" })?.value ?? ""
+        return clean(raw.components(separatedBy: .newlines))
+    }
+
+    public static func clean(_ names: [String]) -> [String] {
+        var seen = Set<String>()
+        return names
+            .compactMap(Reminder.cleanShortcut)
+            .filter { $0 != helperName && seen.insert($0).inserted }
+            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
+    /// The names that hold every word typed in the search field.
+    public static func filter(_ names: [String], _ search: String) -> [String] {
+        let words = search.split(separator: " ").map(String.init)
+        guard !words.isEmpty else { return names }
+        return names.filter { n in words.allSatisfy { n.localizedCaseInsensitiveContains($0) } }
+    }
+
+    /// The link that adds the helper: the Shortcuts app fetches the signed file from the public repo.
+    public static let helperFile = URL(string: "https://raw.githubusercontent.com/marsch124/AMS-Persistent-Reminder/main/App/Resources/AMS%20Reminder%20List.shortcut")!
+
+    public static var addHelperURL: URL? {
+        var p = URLComponents()
+        p.scheme = "shortcuts"
+        p.host = "import-shortcut"
+        p.queryItems = [URLQueryItem(name: "url", value: helperFile.absoluteString), URLQueryItem(name: "name", value: helperName)]
+        p.percentEncodedQuery = p.percentEncodedQuery?.replacingOccurrences(of: ":", with: "%3A").replacingOccurrences(of: "/", with: "%2F")
+        return p.url
+    }
 }
