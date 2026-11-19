@@ -53,6 +53,9 @@ enum Nudger {
         UIApplication.shared.open(url)
     }
 
+    /// Settings → Nudges switch off = every nudge paused.
+    static let pausedKey = "nudgesPaused"
+
     static func askPermission() async -> Bool {
         (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
     }
@@ -67,6 +70,8 @@ enum Nudger {
         guard Store.shared.nudgesOn else { return }
         let c = UNUserNotificationCenter.current()
         c.removeAllPendingNotificationRequests()
+        // Paused in Settings (0.3.4): plan nothing until the switch is on again.
+        if UserDefaults.standard.bool(forKey: pausedKey) { return }
         setCategories(reminders)
         let now = Date()
         let cal = Calendar.current

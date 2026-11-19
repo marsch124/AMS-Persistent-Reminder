@@ -50,7 +50,8 @@ final class ReminderUITests: XCTestCase {
         field.typeText("Call Andreas Bjurling")
         XCTAssertTrue(app.buttons["try-shortcut"].waitForExistence(timeout: 5))
         app.buttons["save"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["shortcut-mark-Call Andreas"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["row-Call Andreas"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.descendants(matching: .any)["shortcut-mark-Call Andreas"].exists)
     }
 
     /// 0.3: pick the shortcut from the list; the "Tick off when it runs" switch shows up, on.
@@ -74,7 +75,8 @@ final class ReminderUITests: XCTestCase {
         app.buttons["Daily"].tap()
         app.buttons["colour-teal"].tap()
         app.buttons["save"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["shortcut-mark-Call Andreas"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["row-Call Andreas"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.descendants(matching: .any)["shortcut-mark-Call Andreas"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["colour-bar-Call Andreas"].exists)
         // 0.3.3: the small area on the right (time + pencil) opens the reminder; the rest ticks it off.
         app.descendants(matching: .any)["edit-Call Andreas"].tap()
@@ -101,7 +103,7 @@ final class ReminderUITests: XCTestCase {
         if allow.waitForExistence(timeout: 10) { allow.tap() }
         // The iPhone must allow the nudges, or nothing can pop up.
         app.buttons["tab-settings"].tap()
-        let yes = app.staticTexts["nudges-allowed-yes"]
+        let yes = app.switches["nudges-switch"]
         if !yes.waitForExistence(timeout: 5), let folder = ProcessInfo.processInfo.environment["SHOTS"] {
             try? XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(folder)/nudge-permission.png"))
             try? springboard.debugDescription.write(toFile: "\(folder)/springboard-start.txt", atomically: true, encoding: .utf8)

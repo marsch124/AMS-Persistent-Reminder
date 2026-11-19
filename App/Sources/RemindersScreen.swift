@@ -9,6 +9,7 @@ struct RemindersScreen: View {
     @State private var editing: EditTarget?
     @State private var showDone = false
     @State private var nudgesOff = false
+    @AppStorage(Nudger.pausedKey) private var nudgesPaused = false
 
     var body: some View {
         let now = store.now
@@ -16,9 +17,10 @@ struct RemindersScreen: View {
         let counts = store.list.todayCounts(at: now)
         NavigationStack {
             List {
+                // 0.3.4 (his ask): the heading in the Reminders orange, no day-and-date line under it.
                 Section {
                 } header: {
-                    Text(Theme.longDay(now)).font(.subheadline).foregroundStyle(.secondary).textCase(nil)
+                    ScreenHeading(title: "Persistent Reminders", colour: Theme.orange)
                 }
 
                 if nudgesOff {
@@ -28,6 +30,16 @@ struct RemindersScreen: View {
                             Spacer()
                             Button("Turn on") { openNotificationSettings() }
                                 .buttonStyle(.borderedProminent).tint(Theme.purple).controlSize(.small)
+                        }
+                    }
+                } else if nudgesPaused {
+                    Section {
+                        HStack {
+                            Text("Nudges are paused.").font(.subheadline)
+                            Spacer()
+                            Button("Turn on") { nudgesPaused = false; store.refresh() }
+                                .buttonStyle(.borderedProminent).tint(Theme.purple).controlSize(.small)
+                                .accessibilityIdentifier("unpause-nudges")
                         }
                     }
                 }
@@ -53,20 +65,22 @@ struct RemindersScreen: View {
             }
             .listStyle(.insetGrouped)
             .listSectionSpacing(.compact)
-            .navigationTitle("Reminders")
+            .toolbar(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .bottom) {
               HStack(spacing: 10) {
+                // 0.3.4 (his ask): a round orange + at the bottom left instead of the wide bar.
                 Button { editing = .new } label: {
-                    HStack(spacing: 8) {
-                        ControlMarkView(.add, size: 20)
-                        Text("New reminder").font(.headline)
+                    ZStack {
+                        Circle().fill(Theme.orangeFill)
+                        ControlMarkView(.add, size: 26, colour: .white)
                     }
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                    .foregroundStyle(.white)
-                    .background(Theme.orangeFill, in: RoundedRectangle(cornerRadius: 14))
+                    .frame(width: 56, height: 56)
+                    .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("New reminder")
                 .accessibilityIdentifier("new-reminder")
+                Spacer()
                 // Done is a small round button at the bottom right (his pick, 0.3): the green ring of today
                 // with the number done inside. It opens the Done list.
                 Button { showDone = true } label: {
@@ -77,8 +91,8 @@ struct RemindersScreen: View {
                         Text("\(counts.done)").font(.subheadline.weight(.bold)).monospacedDigit()
                             .foregroundStyle(Theme.green)
                     }
-                    .frame(width: 50, height: 50)
-                    .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
+                    .frame(width: 56, height: 56)
+                    .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Done: \(counts.done) done, \(counts.toGo) to go today")
@@ -208,7 +222,6 @@ struct ReminderRow: View {
             .frame(width: 34, height: 34)
             VStack(alignment: .leading, spacing: 1) {
                 Text(reminder.title).font(.body)
-                    .strikethrough(ticked, color: .secondary)
                 HStack(spacing: 4) {
                     if waiting { AppMarkView(.bell, size: 12) }
                     else if reminder.repeats != .never {
@@ -234,17 +247,6 @@ struct ReminderRow: View {
 
     private var editArea: some View {
         HStack(spacing: 7) {
-            if reminder.shortcut != nil {
-                // A small round purple play button, like the Shortcuts app's own run button (0.3.3; the bare
-                // play mark was "very unsexy").
-                ZStack {
-                    Circle().fill(Theme.purpleFill)
-                    ControlMarkView(.play, size: 12, colour: .white).offset(x: 1)
-                }
-                .frame(width: 22, height: 22)
-                .accessibilityLabel("Press and hold to run \(reminder.shortcut ?? "")")
-                .accessibilityIdentifier("shortcut-mark-\(reminder.title)")
-            }
             VStack(alignment: .trailing, spacing: 2) {
                 Text(timeText)
                     .font(.callout.weight(.semibold)).monospacedDigit()

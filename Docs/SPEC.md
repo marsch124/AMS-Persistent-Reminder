@@ -1,4 +1,4 @@
-# AMS Persistent Reminder: specification (0.3.3, build 7)
+# AMS Persistent Reminder: specification (0.3.4)
 
 Name under the icon: AMS Reminder. Bundle id: com.schabbauer.AMSPersistentReminder. iPhone only, portrait, iOS 17+. Positive, calm, Apple look; Apple's standard text sizes; compact rows.
 
@@ -35,15 +35,16 @@ A reminder keeps nudging every N minutes from its due time until it is ticked of
 
 ## 5. Screens
 ### Tab bar
-Two tabs with large hand-drawn icons: Reminders (orange bell) and Settings (gear).
+Two tabs with large hand-drawn icons: Reminders (orange bell) and Settings (purple gear; the tab label stays "Reminders").
 
 ### Reminders
-- Big title "Reminders"; today's date under it.
-- No strip under the date (the old "2 done · 4 to go today" line and its `today-pill` are removed). Instead a small round button `done-button` at the bottom right, beside the "New reminder" button: the green ring of today (done today of done today + still to go today) with the number done today inside it. Tap opens Done.
+- Big title "Persistent Reminders" in orange (the colour of the Reminders bell; 0.3.4). The tab label stays "Reminders". No date line under the title (removed in 0.3.4).
+- When nudges are paused (switch Nudges off in Settings) the top of the list shows the line "Nudges are paused." with a "Turn on" button that switches them on again.
+- No strip (the old "2 done · 4 to go today" line and its `today-pill` are removed). A round green button `done-button` at the bottom right: the green ring of today (done today of done today + still to go today) with the number done today inside it. Tap opens Done.
 - Groups, each sorted by time, empty ones hidden: Waiting for you (orange; due <= now), Today (blue), Tomorrow, Later. Calm empty state when there is nothing.
-- Row: round tick circle (tap = done, short happy buzz); title; small grey line: waiting = "Nudging every 5 min · 3rd nudge", repeating = "Every day" / "Every Thursday" / "Every month", otherwise "Nudge every 10 min"; time on the right. A row with a shortcut shows a small purple play mark just before the time. A repeating reminder with a colour stands in a frame of its colour (2 pt line, corner 12, 2 pt inside the row) with a 10 % tint of it inside (0.3.2), shows a thin colour bar (`colour-bar-<title>`) at the left of the row, its tick circle in that colour and its small repeat mark in that colour. A reminder with Repeat Never never shows a colour.
+- Row: round tick circle (tap = done, short happy buzz); title; small grey line: waiting = "Nudging every 5 min · 3rd nudge", repeating = "Every day" / "Every Thursday" / "Every month", otherwise "Nudge every 10 min"; time on the right. Since 0.3.4 a row shows no shortcut mark (the purple play button of 0.3.3 is gone); the edit screen still shows the shortcut. Ticking (0.3.4): the circle turns into a green tick, the title is not struck through, then the reminder leaves the list. A repeating reminder with a colour stands in a frame of its colour (2 pt line, corner 12, 2 pt inside the row) with a 10 % tint of it inside (0.3.2), shows a thin colour bar (`colour-bar-<title>`) at the left of the row, its tick circle in that colour and its small repeat mark in that colour. A reminder with Repeat Never never shows a colour.
 - Tap a row = change it. Swipe left = delete. Swipe right = tick off. Press and hold (0.5 s) a row with a shortcut = short buzz (haptic), then the shortcut runs (see section 6a) and, if tickWhenRun is on, the reminder is ticked off. Rows without a shortcut: nothing happens on press and hold.
-- Big full-colour orange button "New reminder" at the bottom.
+- Round full-colour orange button with a white plus (`ControlMark.add`) at the bottom LEFT: new reminder (0.3.4; it replaces the wide "New reminder" bar). The round green `done-button` stays at the bottom right.
 
 ### New reminder / Change reminder
 - Cancel and Save (Escape = Cancel where there is a keyboard). Save needs a title.
@@ -56,13 +57,13 @@ Two tabs with large hand-drawn icons: Reminders (orange bell) and Settings (gear
 - Swipe left = Bring back. Entries older than 30 days are tidied away.
 
 ### Settings
-- Done; Shortcuts part (purple heading; row `settings-shortcuts` "Your shortcuts" showing "37 loaded" or "None yet", opens the list page of section 6b; footer: "Load them once with the helper, then pick them on each reminder."; a "Load again" action); Nudge me every (starting choice for new reminders, 5 min at first); Nudges allowed? (shows whether the iPhone allows it; a button opens the iPhone's settings when off); How it works; What's new (every version, newest first); the version number at the bottom.
+- Done; Shortcuts part (purple heading; row `settings-shortcuts` "Your shortcuts" showing "37 loaded" or "None yet", opens the list page of section 6b; footer: "Load them once with the helper, then pick them on each reminder."; a "Load again" action); Nudge me every (starting choice for new reminders, 5 min at first); Nudges (0.3.4): a switch, on by default, stored in the app's settings on the iPhone. Off = the app pauses all nudges: none are planned, reminders stay in the list, and the Reminders screen shows "Nudges are paused." with a "Turn on" button. On = nudges are planned again. If the iPhone does not allow notifications for the app, the row shows a "Turn on" button that opens the iPhone's settings for the app (it replaces the read-only "Nudges allowed? Yes" row); How it works; What's new (every version, newest first); the version number at the bottom. The Settings heading is purple (the colour of the Settings tab mark).
 
 ## 6. The nudge
 - A message at the due time, also on the lock screen, then every N minutes: "Since 08:00 · 3rd nudge".
 - Press and hold for buttons: [Run: <shortcut name> (only when the reminder has a shortcut; always first)], Done, In 10 minutes, In 1 hour, This evening (late in the day: Tomorrow morning, 08:00). Done ticks it off without opening the app (including moving on a repeating one).
 - Planning: the iPhone holds about 64 planned messages, so the app plans up to 60 nudges ahead, earliest first across all reminders. It tops them up every time it opens or the list changes. A reminder left for many hours may go quiet until the app is opened.
-- Permission: if the iPhone does not allow nudges, Settings says so and offers a button to the iPhone's settings.
+- Permission: if the iPhone does not allow nudges, the Nudges row in Settings offers a "Turn on" button to the iPhone's settings. Pause: with the switch Nudges off, no nudges are planned at all.
 
 ### 6a. Running a shortcut
 - The name must match the shortcut's name in the Shortcuts app exactly (same capitals and spaces), e.g. "Call Andreas Bjurling". If it does not, the Shortcuts app says it cannot find it.
@@ -74,7 +75,7 @@ Two tabs with large hand-drawn icons: Reminders (orange bell) and Settings (gear
 
 ### 6b. Your shortcuts (the list page)
 - Opened by the Pick button on the edit screen (`pick-shortcut`) or the Settings row (`settings-shortcuts`). A list (`shortcut-picker`) of the stored names with a search field at the top; each row `shortcut-option-<name>`; tapping one puts the name into the Shortcut field and closes the page. A name can still be typed by hand.
-- An iPhone app cannot read the user's shortcuts, so a helper shortcut "AMS Reminder List" does it. First time (empty list) the page says so and shows two steps: "1. Add the helper" (`add-helper`) and "2. Load my shortcuts" (`load-shortcuts`). Later "Load again" (bottom of the page, and in Settings) runs the helper again.
+- An iPhone app cannot read the user's shortcuts, so a helper shortcut "AMS Reminder List" does it. First time (empty list) the page says so and shows two steps: "1. Add the helper" (`add-helper`) and "2. Load my shortcuts" (`load-shortcuts`). Later "Load again" (bottom of the page, and in Settings › Shortcuts › Your shortcuts) runs the helper again and comes back with the new list.
 - Add the helper (`add-helper`): a share sheet with the bundled, signed file `AMS Reminder List.shortcut`; the user chooses Shortcuts, then "Add Shortcut". (0.3 opened `shortcuts://import-shortcut?url=…`; iOS 27 answers "The shortcut URL provided was invalid", so 0.3.1 dropped it, and the separate `share-helper` line with it.) The helper also syncs from the Mac's Shortcuts through iCloud.
 - Nudge buttons are answered with the completion-handler delegate methods on the main thread (0.3.1). The async forms crashed: iOS finished them on a background thread and UIKit aborted (TestFlight crash reports, 0.1 and 0.3).
 - Load: the app runs the helper by `shortcuts://run-shortcut?name=AMS%20Reminder%20List`. The Shortcuts app flashes up, collects the names and opens the link back `amsreminder://shortcuts?names=<one name per line, encoded>`. The app stores them sorted A-Z, without "AMS Reminder List", and shows the list. The first time, iOS may ask whether "AMS Reminder List" may open AMS Reminder (Allow / Always Allow).
@@ -94,3 +95,4 @@ Two tabs with large hand-drawn icons: Reminders (orange bell) and Settings (gear
 0.3.1 (19 Nov 2026): fixed the crash when a nudge button is pressed (delegate answers on the main thread); "Add the helper" now uses the share sheet (the import link is refused by iOS 27).
 0.3.2 (19 Nov 2026): a coloured repeating reminder gets a coloured frame and a faint tint (his ask: the bar alone was too subtle).
 0.3.3 (19 Nov 2026), his ask: the row has two tap areas. Tick area (`tick-<title>`): circle, title and small line, most of the row; tap = tick off with the buzz and green tick. Edit area (`edit-<title>`): the time with a small pencil mark (`ControlMark.edit`) under it, and the shortcut button; tap = change it. Press and hold either area 0.5 s = run the shortcut. The shortcut mark is a 22 pt filled purple circle with a white play mark. The coloured frame uses a continuous corner of 19 pt, 3 pt inside the row, line 2.5 pt, so the list card's own corner never cuts it.
+0.3.4 (19 Nov 2026), his asks: ticking shows a green tick without strike-through, then the reminder leaves; the round purple play button on the row is removed (press and hold still runs the shortcut); the date line is removed; the Reminders heading reads "Persistent Reminders" in orange; the Settings heading is purple; the wide "New reminder" bar becomes a round orange plus button at the bottom left; Settings "Nudges allowed" becomes the switch "Nudges" (off = all nudges paused) with a "Turn on" button when the iPhone refuses, and the Reminders screen shows "Nudges are paused." with "Turn on". Guide: new part "Signs in this app", and a line on loading new shortcuts.

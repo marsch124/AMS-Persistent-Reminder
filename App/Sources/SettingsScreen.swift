@@ -8,6 +8,7 @@ import ReminderCore
 struct SettingsScreen: View {
     @EnvironmentObject private var store: Store
     @AppStorage("defaultNudge") private var defaultNudge = 5
+    @AppStorage(Nudger.pausedKey) private var nudgesPaused = false
     @State private var allowed: Bool?
     @State private var planned = ""
 
@@ -15,6 +16,11 @@ struct SettingsScreen: View {
         let doneToday = store.list.doneToday(at: store.now).count
         NavigationStack {
             List {
+                Section {
+                } header: {
+                    ScreenHeading(title: "Settings", colour: Theme.purple)
+                }
+
                 Section {
                     NavigationLink { DoneScreen() } label: {
                         HStack(spacing: 12) {
@@ -38,24 +44,29 @@ struct SettingsScreen: View {
                             Text("Nudge me every")
                         }
                     }
+                    // 0.3.4 (his ask): a real switch. Off pauses every nudge; the iPhone's own permission
+                    // is only asked for (Turn on) when the iPhone itself does not allow them.
                     HStack(spacing: 12) {
                         AppMarkView(.info, size: 24, colour: Theme.purple)
-                        Text("Nudges allowed")
-                        Spacer()
-                        switch allowed {
-                        case true?: Text("Yes").foregroundStyle(Theme.green).accessibilityIdentifier("nudges-allowed-yes")
-                        case false?:
+                        if allowed == false {
+                            Text("Nudges")
+                            Spacer()
                             Button("Turn on") {
                                 if let url = URL(string: UIApplication.openNotificationSettingsURLString) { UIApplication.shared.open(url) }
                             }
                             .buttonStyle(.borderedProminent).tint(Theme.purple).controlSize(.small)
-                        case nil: EmptyView()
+                            .accessibilityIdentifier("nudges-turn-on")
+                        } else {
+                            Toggle("Nudges", isOn: Binding(get: { !nudgesPaused },
+                                                           set: { nudgesPaused = !$0; store.refresh() }))
+                                .tint(Theme.purple)
+                                .accessibilityIdentifier("nudges-switch")
                         }
                     }
                 } header: {
                     Text("Nudges").foregroundStyle(Theme.purple)
                 } footer: {
-                    Text("New reminders start with this. You can change it for each reminder.")
+                    Text(nudgesPaused ? "Nudges are paused: nothing will remind you until you switch them on again." : "New reminders start with this. You can change it for each reminder.")
                 }
 
                 Section {
@@ -93,7 +104,9 @@ struct SettingsScreen: View {
                 }
             }
             .listStyle(.insetGrouped)
+            .listSectionSpacing(.compact)
             .navigationTitle("Settings")
+            .toolbar(.hidden, for: .navigationBar)
             .task(id: store.now) {
                 allowed = (store.isTesting && !store.nudgesOn) ? true : await Nudger.isAllowed()
                 if store.isTesting && store.nudgesOn {
@@ -105,6 +118,23 @@ struct SettingsScreen: View {
                 }
             }
         }
+    }
+}
+
+/// A main page's large heading in its part's colour (0.3.4, his ask; the system title cannot be coloured per page).
+struct ScreenHeading: View {
+    let title: String
+    let colour: Color
+
+    var body: some View {
+        Text(title)
+            .font(.largeTitle.bold())
+            .foregroundStyle(colour)
+            .lineLimit(1).minimumScaleFactor(0.7)
+            .textCase(nil)
+            .padding(.top, 6)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("heading")
     }
 }
 
