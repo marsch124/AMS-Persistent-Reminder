@@ -67,6 +67,7 @@ struct RemindersScreen: View {
                 group("Today", s.today, Theme.blue)
                 group("Tomorrow", s.tomorrow, .secondary)
                 group("Later", s.later, .secondary)
+                group("At a place", s.atPlace, Theme.blue, place: true)
             }
             .listStyle(.insetGrouped)
             .listSectionSpacing(.compact)
@@ -130,7 +131,7 @@ struct RemindersScreen: View {
     }
 
     @ViewBuilder
-    private func group(_ title: String, _ items: [Reminder], _ colour: Color, mark: Bool = false) -> some View {
+    private func group(_ title: String, _ items: [Reminder], _ colour: Color, mark: Bool = false, place: Bool = false) -> some View {
         if !items.isEmpty {
             Section {
                 ForEach(items) { r in
@@ -151,6 +152,7 @@ struct RemindersScreen: View {
             } header: {
                 HStack(spacing: 5) {
                     if mark { AppMarkView(.bell, size: 14) }
+                    if place { AppMarkView(.map, size: 14, colour: Theme.blue) }
                     Text(title)
                 }
                 .font(.footnote.weight(.semibold))
@@ -241,6 +243,7 @@ struct ReminderRow: View {
                 HStack(spacing: 4) {
                     if paused { ControlMarkView(.pause, size: 12, colour: Theme.purple) }
                     else if waiting { AppMarkView(.bell, size: 12) }
+                    else if reminder.isAtPlaceWaiting { AppMarkView(.map, size: 12, colour: Theme.blue) }
                     else if reminder.repeats != .never {
                         AppMarkView(.repeat, size: 12, colour: reminder.shownColour.map(Theme.row) ?? .secondary)
                     }
@@ -294,6 +297,7 @@ struct ReminderRow: View {
     }
 
     private var timeText: String {
+        if reminder.isAtPlaceWaiting { return "" }
         let cal = Calendar.current
         let tomorrow = cal.date(byAdding: .day, value: 1, to: now)!
         let yesterday = cal.date(byAdding: .day, value: -1, to: now)!

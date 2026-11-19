@@ -81,6 +81,12 @@ final class Store: ObservableObject {
         Nudger.clearDelivered(for: id)
     }
 
+    /// 0.5 (pick 11): the iPhone says he arrived at / left the place of this reminder: it starts nudging now.
+    func reachedPlace(_ id: UUID) {
+        let t = Date()
+        change { $0.reachedPlace(id, at: t) }
+    }
+
     private func change(_ edit: (inout ReminderList) -> Void) {
         now = Date()
         var copy = list
@@ -88,6 +94,7 @@ final class Store: ObservableObject {
         list = copy
         save()
         Nudger.plan(list.reminders)
+        PlaceWatcher.shared.sync(list.reminders)
     }
 
     /// Called when the app comes to the front: the clock, the tidy-up and the nudge plan.
@@ -100,6 +107,7 @@ final class Store: ObservableObject {
             if copy != list { list = copy; save() }
         }
         Nudger.plan(list.reminders)
+        PlaceWatcher.shared.sync(list.reminders)
     }
 
     // MARK: The file

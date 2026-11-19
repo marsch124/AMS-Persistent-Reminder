@@ -76,6 +76,8 @@ public struct Place: Codable, Equatable, Sendable {
     public var radius: Double
     /// true = when I arrive, false = when I leave.
     public var onArrive: Bool
+    /// False until a spot has been picked (0, 0 is the middle of the sea, never a real home).
+    public var hasSpot: Bool { latitude != 0 || longitude != 0 }
     public init(name: String, latitude: Double, longitude: Double, radius: Double = 150, onArrive: Bool = true) {
         self.name = name; self.latitude = latitude; self.longitude = longitude; self.radius = radius; self.onArrive = onArrive
     }
@@ -214,6 +216,9 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
     /// Are its nudges paused right now?
     public func isPaused(at now: Date) -> Bool { Pause.isOn(pausedUntil, at: now) }
 
+    /// A place reminder that has not reached its place yet (its `due` is `Place.notYet`).
+    public var isAtPlaceWaiting: Bool { place != nil && due >= Place.notYet }
+
     /// Has its time come?
     public func isWaiting(at now: Date) -> Bool { due <= now }
 
@@ -329,7 +334,10 @@ public struct ReminderList: Codable, Equatable, Sendable {
         let r = reminders[i]
         let entry = DoneEntry(reminder: r, doneAt: now, nudges: r.nudgesSoFar(at: now))
         done.insert(entry, at: 0)
-        if let next = r.nextOccurrence(after: now, calendar: calendar) {
+        if r.place != nil {
+            // A place reminder: a repeating one waits for the next arrival (or leaving); a one-off leaves.
+            if r.repeats != .never { reminders[i].due = Place.notYet } else { reminders.remove(at: i) }
+        } else if let next = r.nextOccurrence(after: now, calendar: calendar) {
             reminders[i].due = next
         } else {
             reminders.remove(at: i)
@@ -372,6 +380,12 @@ public struct ReminderList: Codable, Equatable, Sendable {
         if let i = reminders.firstIndex(where: { $0.id == id }) { reminders[i].due = date }
     }
 
+    /// 0.5 (pick 11): the place was reached (arrived at / left): a reminder still waiting for it starts nudging now.
+    public mutating func reachedPlace(_ id: UUID, at now: Date) {
+        guard let i = reminders.firstIndex(where: { $0.id == id }), reminders[i].isAtPlaceWaiting else { return }
+        reminders[i].due = now
+    }
+
     // MARK: What the screens show
 
     public func reminder(_ id: UUID) -> Reminder? { reminders.first { $0.id == id } }
@@ -381,7 +395,8 @@ public struct ReminderList: Codable, Equatable, Sendable {
         var s = Sections()
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) ?? now
         for r in reminders.sorted(by: { $0.due < $1.due }) {
-            if r.due <= now { s.waiting.append(r) }
+            if r.isAtPlaceWaiting { s.atPlace.append(r) }
+            else if r.due <= now { s.waiting.append(r) }
             else if calendar.isDate(r.due, inSameDayAs: now) { s.today.append(r) }
             else if calendar.isDate(r.due, inSameDayAs: tomorrow) { s.tomorrow.append(r) }
             else { s.later.append(r) }
@@ -420,8 +435,10 @@ public struct Sections: Equatable, Sendable {
     public var today: [Reminder] = []
     public var tomorrow: [Reminder] = []
     public var later: [Reminder] = []
+    /// 0.5 (pick 11): place reminders still waiting to arrive at / leave their place.
+    public var atPlace: [Reminder] = []
     public init() {}
-    public var isEmpty: Bool { waiting.isEmpty && today.isEmpty && tomorrow.isEmpty && later.isEmpty }
+    public var isEmpty: Bool { waiting.isEmpty && today.isEmpty && tomorrow.isEmpty && later.isEmpty && atPlace.isEmpty }
 }
 
 /// The names of his shortcuts, sent back by the helper shortcut "AMS Reminder List".
