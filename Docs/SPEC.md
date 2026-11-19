@@ -1,4 +1,4 @@
-# AMS Persistent Reminder: specification (0.3.2, build 6)
+# AMS Persistent Reminder: specification (0.3.3, build 7)
 
 Name under the icon: AMS Reminder. Bundle id: com.schabbauer.AMSPersistentReminder. iPhone only, portrait, iOS 17+. Positive, calm, Apple look; Apple's standard text sizes; compact rows.
 
@@ -93,3 +93,4 @@ Two tabs with large hand-drawn icons: Reminders (orange bell) and Settings (gear
 0.3 also: the "done · to go" strip is replaced by a round `done-button` (green ring with the number done) at the bottom right; repeating reminders can wear one of eight colours (`colour`, bar, tick circle and repeat mark), format still 1.
 0.3.1 (19 Nov 2026): fixed the crash when a nudge button is pressed (delegate answers on the main thread); "Add the helper" now uses the share sheet (the import link is refused by iOS 27).
 0.3.2 (19 Nov 2026): a coloured repeating reminder gets a coloured frame and a faint tint (his ask: the bar alone was too subtle).
+0.3.3 (19 Nov 2026), his ask: the row has two tap areas. Tick area (`tick-<title>`): circle, title and small line, most of the row; tap = tick off with the buzz and green tick. Edit area (`edit-<title>`): the time with a small pencil mark (`ControlMark.edit`) under it, and the shortcut button; tap = change it. Press and hold either area 0.5 s = run the shortcut. The shortcut mark is a 22 pt filled purple circle with a white play mark. The coloured frame uses a continuous corner of 19 pt, 3 pt inside the row, line 2.5 pt, so the list card's own corner never cuts it.

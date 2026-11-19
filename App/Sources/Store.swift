@@ -156,7 +156,7 @@ enum Sample {
         let tomorrow = cal.date(byAdding: .day, value: 1, to: now)!
         var l = ReminderList(reminders: [
             Reminder(title: "Take vitamins", due: now.addingTimeInterval(-12 * 60), repeats: .daily, nudgeMinutes: 5, colour: .green),
-            Reminder(title: "Call the dentist", due: now.addingTimeInterval(2 * 3600), nudgeMinutes: 10),
+            Reminder(title: "Call the dentist", due: now.addingTimeInterval(2 * 3600), nudgeMinutes: 10, shortcut: "Call dentist"),
             Reminder(title: "Water the plants", due: now.addingTimeInterval(5 * 3600), repeats: .weekly, nudgeMinutes: 15, colour: .teal),
             Reminder(title: "Pay the parking", due: at(hour: 9, minute: 0, on: tomorrow), nudgeMinutes: 15),
         ])

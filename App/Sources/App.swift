@@ -39,6 +39,8 @@ enum Theme {
     static let orangeFill = dynamic(0xE8603A, 0xE0562F)
     static let blueFill = dynamic(0x2F7CF6, 0x2F6FE0)
     static let purpleFill = dynamic(0x7C4DEB, 0x6D3FE0)
+    /// The coloured frame's corner, a little inside the list card's own rounder corner.
+    static let frameRadius: CGFloat = 19
 
     /// A repeating reminder's own colour, by day and by night.
     static func row(_ c: RowColour) -> Color {

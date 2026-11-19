@@ -76,6 +76,10 @@ final class ReminderUITests: XCTestCase {
         app.buttons["save"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["shortcut-mark-Call Andreas"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["colour-bar-Call Andreas"].exists)
+        // 0.3.3: the small area on the right (time + pencil) opens the reminder; the rest ticks it off.
+        app.descendants(matching: .any)["edit-Call Andreas"].tap()
+        XCTAssertTrue(app.buttons["cancel"].waitForExistence(timeout: 5))
+        app.buttons["cancel"].tap()
         app.buttons["done-button"].tap()
         XCTAssertTrue(app.buttons["close-done"].waitForExistence(timeout: 5))
     }

@@ -27,13 +27,13 @@ enum Guide {
             "At the bottom, the big orange button “New reminder” makes a new one. Beside it, at the bottom right, a small round button shows the green ring of today with the number you have done inside it. Tap it to open the list of what you ticked off.",
         ]),
         Part(title: "One row", text: [
-            "On the left is a round circle. Tap it and the reminder is done. You feel a short, happy buzz.",
+            "Tap anywhere on the circle, the title or the small grey line, which is most of the row, and the reminder is done. You feel a short, happy buzz, and the circle turns into a green tick.",
             "In the middle are the title and a small grey line. A waiting reminder says, for example, “Nudging every 5 min · 3rd nudge”. Other ones say how they repeat (“Every day”, “Every Thursday”) or “Nudge every 10 min”.",
-            "On the right is the time.",
+            "On the right is the time, with a small pencil under it. Tap the time or the pencil to change the reminder.",
             "A repeating reminder with a colour stands in a frame of that colour, with a faint tint of it inside. A thin bar in that colour sits at the left of the row, and its tick circle and its small repeat mark have the colour too. A one-off reminder never shows a colour.",
-            "If the reminder has a shortcut, a small purple play mark stands just before the time.",
-            "Tap a row to change it. Swipe it to the left to delete it. Swipe it to the right to tick it off.",
-            "Press and hold a row with a play mark for half a second. You feel a short buzz, and its shortcut runs. If “Tick off when it runs” is on for that reminder, it is ticked off at the same moment. A row without a shortcut does nothing when you press and hold it.",
+            "If the reminder has a shortcut, a small round purple play button stands just before the time.",
+            "Swipe a row to the left to delete it. Swipe it to the right to tick it off.",
+            "Press and hold a row with a play button for half a second. You feel a short buzz, and its shortcut runs. If “Tick off when it runs” is on for that reminder, it is ticked off at the same moment. A row without a shortcut does nothing when you press and hold it.",
         ]),
         Part(title: "Making and changing a reminder", text: [
             "Press “New reminder”. Type what it is. Then choose when.",
@@ -91,6 +91,12 @@ enum Guide {
     ]
 
     static let news: [Release] = [
+        Release(version: "0.3.3", date: "19 Nov 2026", items: [
+            "Changed: ticking off is much easier. Before, only the small circle ticked a reminder off, and a tap anywhere else opened it. Now a tap on the circle, the title or the small grey line (most of the row) ticks it off.",
+            "Changed: to change a reminder, tap the time on the right, or the small pencil under it.",
+            "Fixed: the coloured frame now runs all the way round the row. Before, the corners of the list card cut off the frame's corners.",
+            "Changed: the small purple play mark of a reminder with a shortcut is now a round purple play button, like the one in the Shortcuts app.",
+        ]),
         Release(version: "0.3.2", date: "19 Nov 2026", items: [
             "Changed: a coloured reminder now stands in a frame of its colour, with a faint tint of that colour inside, so you see the colour at a glance. Before, only a thin bar, the circle and the repeat mark were coloured, which was too subtle. The bar, the circle and the repeat mark stay.",
         ]),

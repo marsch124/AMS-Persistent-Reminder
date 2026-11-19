@@ -108,12 +108,11 @@ struct RemindersScreen: View {
         if !items.isEmpty {
             Section {
                 ForEach(items) { r in
-                    ReminderRow(reminder: r, now: store.now, colour: colour, waiting: mark) {
-                        store.tick(r.id)
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture { editing = .edit(r) }
-                    .onLongPressGesture(minimumDuration: 0.5) { runShortcut(r) }
+                    // 0.3.3 (his ask): most of the row ticks it off; only the time and the small pencil on the right open it.
+                    ReminderRow(reminder: r, now: store.now, colour: colour, waiting: mark,
+                                onTick: { store.tick(r.id) },
+                                onEdit: { editing = .edit(r) },
+                                onRun: { runShortcut(r) })
                     .listRowBackground(rowBackground(r, waiting: mark))
                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                         Button { tickWithJoy(r.id) } label: { Text("Done") }.tint(Theme.green)
@@ -138,11 +137,13 @@ struct RemindersScreen: View {
     private func rowBackground(_ r: Reminder, waiting: Bool) -> some View {
         let base = waiting ? Theme.waitingRow : Color(.secondarySystemGroupedBackground)
         if let c = r.shownColour {
+            // Round the frame like the card itself and keep it just inside, so the card never cuts its corners
+            // (0.3.2 used a smaller curve, and the card clipped the frame's corners — his screenshot, 19 Nov).
             base.overlay {
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: Theme.frameRadius, style: .continuous)
                     .fill(Theme.row(c).opacity(0.10))
-                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.row(c), lineWidth: 2))
-                    .padding(2)
+                    .overlay(RoundedRectangle(cornerRadius: Theme.frameRadius, style: .continuous).strokeBorder(Theme.row(c), lineWidth: 2.5))
+                    .padding(3)
             }
             .accessibilityIdentifier("colour-frame-\(r.title)")
         } else {
@@ -169,44 +170,42 @@ struct RemindersScreen: View {
     }
 }
 
-/// One reminder: tick circle, title, small line, time.
+/// One reminder. Left (circle, title, small line — most of the row): tap = tick off. Right (time and a small
+/// pencil): tap = change it. Press and hold anywhere = run its shortcut.
 struct ReminderRow: View {
     let reminder: Reminder
     let now: Date
     let colour: Color
     let waiting: Bool
     let onTick: () -> Void
+    let onEdit: () -> Void
+    let onRun: () -> Void
     @State private var ticked = false
 
     var body: some View {
-        HStack(spacing: 11) {
+        HStack(spacing: 8) {
             if let c = reminder.shownColour {
                 Capsule().fill(Theme.row(c)).frame(width: 4, height: 30)
-                    .padding(.trailing, -4)
                     .accessibilityIdentifier("colour-bar-\(reminder.title)")
             }
-            Button {
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
-                withAnimation(.spring(duration: 0.25)) { ticked = true }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
-                    withAnimation { onTick() }
-                    ticked = false
-                }
-            } label: {
-                Group {
-                    if ticked {
-                        ControlMarkView(.ticked, size: 28, colour: Theme.green)
-                    } else {
-                        ControlMarkView(.circle, size: 28, colour: waiting ? Theme.orange : reminder.shownColour.map(Theme.row) ?? Color(.tertiaryLabel))
-                    }
-                }
-                .frame(width: 34, height: 34)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Tick off \(reminder.title)")
-            .accessibilityIdentifier("tick-\(reminder.title)")
+            tickArea
+            editArea
+        }
+        .padding(.vertical, 1)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("row-\(reminder.title)")
+    }
 
+    private var tickArea: some View {
+        HStack(spacing: 11) {
+            Group {
+                if ticked {
+                    ControlMarkView(.ticked, size: 28, colour: Theme.green)
+                } else {
+                    ControlMarkView(.circle, size: 28, colour: waiting ? Theme.orange : reminder.shownColour.map(Theme.row) ?? Color(.tertiaryLabel))
+                }
+            }
+            .frame(width: 34, height: 34)
             VStack(alignment: .leading, spacing: 1) {
                 Text(reminder.title).font(.body)
                     .strikethrough(ticked, color: .secondary)
@@ -220,19 +219,58 @@ struct ReminderRow: View {
                 .font(.footnote)
                 .foregroundStyle(waiting ? Theme.orange : Color.secondary)
             }
-            Spacer(minLength: 6)
-            if reminder.shortcut != nil {
-                ControlMarkView(.play, size: 14, colour: Theme.purple)
-                    .accessibilityLabel("Press and hold to run \(reminder.shortcut ?? "")")
-                    .accessibilityIdentifier("shortcut-mark-\(reminder.title)")
-            }
-            Text(timeText)
-                .font(.callout.weight(.semibold)).monospacedDigit()
-                .foregroundStyle(colour)
+            Spacer(minLength: 4)
         }
-        .padding(.vertical, 1)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: tick)
+        .onLongPressGesture(minimumDuration: 0.5, perform: onRun)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Tick off \(reminder.title)")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { tick() }
+        .accessibilityIdentifier("tick-\(reminder.title)")
+    }
+
+    private var editArea: some View {
+        HStack(spacing: 7) {
+            if reminder.shortcut != nil {
+                // A small round purple play button, like the Shortcuts app's own run button (0.3.3; the bare
+                // play mark was "very unsexy").
+                ZStack {
+                    Circle().fill(Theme.purpleFill)
+                    ControlMarkView(.play, size: 12, colour: .white).offset(x: 1)
+                }
+                .frame(width: 22, height: 22)
+                .accessibilityLabel("Press and hold to run \(reminder.shortcut ?? "")")
+                .accessibilityIdentifier("shortcut-mark-\(reminder.title)")
+            }
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(timeText)
+                    .font(.callout.weight(.semibold)).monospacedDigit()
+                    .foregroundStyle(colour)
+                    .multilineTextAlignment(.trailing)
+                ControlMarkView(.edit, size: 13, colour: .secondary)
+            }
+        }
+        .padding(.leading, 4)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onEdit)
+        .onLongPressGesture(minimumDuration: 0.5, perform: onRun)
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("row-\(reminder.title)")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction(named: "Change") { onEdit() }
+        .accessibilityIdentifier("edit-\(reminder.title)")
+    }
+
+    private func tick() {
+        guard !ticked else { return }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        withAnimation(.spring(duration: 0.25)) { ticked = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+            withAnimation { onTick() }
+            ticked = false
+        }
     }
 
     private var timeText: String {
