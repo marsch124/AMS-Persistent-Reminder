@@ -142,8 +142,20 @@ public enum Words {
         return "\(n)\(suffix)"
     }
 
-    /// "Every day", "Every Thursday", "Every month on the 19th", or nil for a one-off.
+    /// "Every day", "Every Thursday", "Every Mon, Wed, Fri", "Every 2 hours", "3 days after done" … or nil for a one-off.
     public static func repeatText(_ r: Reminder, calendar: Calendar = .current) -> String? {
+        let n = max(1, r.every)
+        if r.afterDone {
+            switch r.repeats {
+            case .never: return nil
+            case .daily: return "1 day after done"
+            case .weekly: return "1 week after done"
+            case .monthly: return "1 month after done"
+            case .hours: return "\(n) hour\(n == 1 ? "" : "s") after done"
+            case .days: return "\(n) day\(n == 1 ? "" : "s") after done"
+            case .weekdays: return "\(dayNames(r, calendar: calendar)) after done"
+            }
+        }
         switch r.repeats {
         case .never: return nil
         case .daily: return "Every day"
@@ -155,9 +167,27 @@ public enum Words {
             f.dateFormat = "EEEE"
             return "Every \(f.string(from: r.due))"
         case .monthly: return "Every month on the \(ordinal(calendar.component(.day, from: r.due)))"
-        // 0.5 stubs — lane "repeats" writes the real words.
-        case .weekdays, .hours, .days: return "Repeats"
+        case .hours: return n == 1 ? "Every hour" : "Every \(n) hours"
+        case .days: return n == 1 ? "Every day" : "Every \(n) days"
+        case .weekdays:
+            let set = chosenDays(r, calendar: calendar)
+            if set.count == 7 { return "Every day" }
+            if set == [2, 3, 4, 5, 6] { return "Every weekday" }
+            if set == [1, 7] { return "Every weekend" }
+            return "Every \(dayNames(r, calendar: calendar))"
         }
+    }
+
+    /// The chosen days as Calendar weekday numbers (an empty choice reads as the due day).
+    static func chosenDays(_ r: Reminder, calendar: Calendar) -> Set<Int> {
+        let s = Set(r.weekdays.filter { (1...7).contains($0) })
+        return s.isEmpty ? [calendar.component(.weekday, from: r.due)] : s
+    }
+
+    /// "Mon, Wed, Fri" — Monday first.
+    static func dayNames(_ r: Reminder, calendar: Calendar) -> String {
+        let names = [2: "Mon", 3: "Tue", 4: "Wed", 5: "Thu", 6: "Fri", 7: "Sat", 1: "Sun"]
+        return [2, 3, 4, 5, 6, 7, 1].filter { chosenDays(r, calendar: calendar).contains($0) }.map { names[$0]! }.joined(separator: ", ")
     }
 
     /// The small grey line under a reminder on the main screen.

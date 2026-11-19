@@ -237,19 +237,50 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
     /// The next time a repeating reminder is for, strictly after `now`, counted from its own due
     /// time (so a monthly one on the 31st stays on the last day of short months and comes back to the 31st).
     public func nextOccurrence(after now: Date, calendar: Calendar = .current) -> Date? {
+        if repeats == .never { return nil }
+        // 0.5 (pick 9): "count from when I tick it off" — the interval starts at `now`, not at the due time.
+        if afterDone {
+            switch repeats {
+            case .never: return nil
+            case .daily: return calendar.date(byAdding: .day, value: 1, to: now)
+            case .weekly: return calendar.date(byAdding: .weekOfYear, value: 1, to: now)
+            case .monthly: return calendar.date(byAdding: .month, value: 1, to: now)
+            case .hours: return calendar.date(byAdding: .hour, value: max(1, every), to: now)
+            case .days: return calendar.date(byAdding: .day, value: max(1, every), to: now)
+            case .weekdays: return nextChosenDay(from: now, calendar: calendar, after: now)
+            }
+        }
         let unit: Calendar.Component
+        var step = 1
         switch repeats {
         case .never: return nil
         case .daily: unit = .day
         case .weekly: unit = .weekOfYear
         case .monthly: unit = .month
-        // 0.5 stubs — lane "repeats" fills these in (picks 7, 8, 9).
-        case .weekdays, .hours, .days: unit = .day
+        case .hours: unit = .hour; step = max(1, every)
+        case .days: unit = .day; step = max(1, every)
+        case .weekdays: return nextChosenDay(from: due, calendar: calendar, after: now)
         }
         var n = 1
         while n < 100_000 {
-            if let d = calendar.date(byAdding: unit, value: n, to: due), d > now { return d }
+            if let d = calendar.date(byAdding: unit, value: n * step, to: due), d > now { return d }
             n += 1
+        }
+        return nil
+    }
+
+    /// The first chosen weekday after the day of `start`, at this reminder's own time of day, and later than `now`.
+    private func nextChosenDay(from start: Date, calendar: Calendar, after now: Date) -> Date? {
+        let chosen = Set(weekdays.filter { (1...7).contains($0) })
+        let days = chosen.isEmpty ? [calendar.component(.weekday, from: due)] : Array(chosen)
+        let time = calendar.dateComponents([.hour, .minute], from: due)
+        let startDay = calendar.startOfDay(for: start)
+        for n in 1...400 {
+            guard let day = calendar.date(byAdding: .day, value: n, to: startDay),
+                  days.contains(calendar.component(.weekday, from: day)),
+                  let d = calendar.date(bySettingHour: time.hour ?? 0, minute: time.minute ?? 0, second: 0, of: day),
+                  d > now else { continue }
+            return d
         }
         return nil
     }
@@ -345,10 +376,18 @@ public struct ReminderList: Codable, Equatable, Sendable {
         return entry
     }
 
-    /// 0.5 (pick 12) — lane "repeats": a repeating reminder skips this time: it moves on to its next time and the
-    /// Done list gets a "Skipped" entry (not late). A one-off reminder is not changed. Stub until the lane fills it.
+    /// 0.5 (pick 12): a repeating reminder skips this time: it moves on to its next time (counted from now when it
+    /// repeats after it is ticked) and the Done list gets a "Skipped" entry with no nudges. A one-off reminder is
+    /// not changed and nothing is returned.
     @discardableResult
-    public mutating func skip(_ id: UUID, at now: Date, calendar: Calendar = .current) -> DoneEntry? { nil }
+    public mutating func skip(_ id: UUID, at now: Date, calendar: Calendar = .current) -> DoneEntry? {
+        guard let i = reminders.firstIndex(where: { $0.id == id }),
+              let next = reminders[i].nextOccurrence(after: now, calendar: calendar) else { return nil }
+        let entry = DoneEntry(reminder: reminders[i], doneAt: now, nudges: 0, skipped: true)
+        done.insert(entry, at: 0)
+        reminders[i].due = next
+        return entry
+    }
 
     /// Undoes a tick: the reminder comes back with the time it had, and the Done entry goes.
     public mutating func bringBack(_ entryID: UUID) {
@@ -420,7 +459,8 @@ public struct ReminderList: Codable, Equatable, Sendable {
     /// "2 done · 4 to go today": done today, and still to do today (waiting + rest of today).
     public func todayCounts(at now: Date, calendar: Calendar = .current) -> (done: Int, toGo: Int) {
         let s = sections(at: now, calendar: calendar)
-        return (doneToday(at: now, calendar: calendar).count, s.waiting.count + s.today.count)
+        // A skipped time is not a done one.
+        return (doneToday(at: now, calendar: calendar).filter { !$0.skipped }.count, s.waiting.count + s.today.count)
     }
 
     /// Drops Done entries older than `days` days, so the file stays small.

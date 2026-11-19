@@ -125,6 +125,13 @@ final class Store: ObservableObject {
         change { $0.reachedPlace(id, at: t) }
     }
 
+    /// Skips this time of a repeating reminder (0.5).
+    func skip(_ id: UUID) {
+        let t = Date()
+        change { $0.skip(id, at: t) }
+        Nudger.clearDelivered(for: id)
+    }
+
     private func change(_ edit: (inout ReminderList) -> Void) {
         now = Date()
         var copy = list

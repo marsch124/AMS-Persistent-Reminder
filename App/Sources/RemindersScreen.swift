@@ -187,6 +187,10 @@ struct RemindersScreen: View {
                         Button(role: .destructive) { store.delete(r.id) } label: { Text("Delete") }
                         Button { pausing = r } label: { Text("Pause") }.tint(Theme.purple)
                         Button { moving = r } label: { Text("Later") }.tint(Theme.blue)
+                        // Skip is grey, so blue keeps meaning "Later" only (one colour, one meaning).
+                        if r.repeats != .never {
+                            Button { withAnimation { store.skip(r.id) } } label: { Text("Skip") }.tint(.gray)
+                        }
                     }
                 }
             } header: {
