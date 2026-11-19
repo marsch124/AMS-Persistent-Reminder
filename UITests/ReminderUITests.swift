@@ -174,6 +174,65 @@ final class ReminderUITests: XCTestCase {
         app.buttons["settings-done"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["done-hero"].waitForExistence(timeout: 5))
         shot("4-done")
+
+        // 0.5: the new parts of the reminder page, one picture per screenful.
+        app.buttons["tab-reminders"].tap()
+        XCTAssertTrue(app.buttons["new-reminder"].waitForExistence(timeout: 5))
+        app.buttons["new-reminder"].tap()
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        app.typeText("Water the plants\n")
+        app.buttons["quick-tomorrowMorning"].tap()
+        let place = app.switches["place-switch"]
+        _ = app.scrollTo(place)
+        place.switches.firstMatch.tap()
+        shot("5-page-place")
+        let onDays = app.buttons["repeat-weekdays"]
+        _ = app.scrollTo(onDays)
+        onDays.tap()
+        shot("5-page-repeat")
+        let louder = app.switches["louder-switch"]
+        _ = app.scrollTo(louder)
+        louder.switches.firstMatch.tap()
+        let stop = app.switches["stop-switch"]
+        _ = app.scrollTo(stop)
+        stop.switches.firstMatch.tap()
+        shot("5-page-nudge-more")
+        app.swipeUp()
+        shot("5-page-nudge-more-b")
+        let note = app.descendants(matching: .any)["note-field"]
+        _ = app.scrollTo(note)
+        note.tap()
+        note.typeText("Small plants first, then the big ones")
+        app.staticTexts["NOTE"].firstMatch.tap()
+        let kind = app.segmentedControls["action-kind"]
+        _ = app.scrollTo(kind)
+        kind.buttons["Link"].tap()
+        shot("5-page-note-link")
+        app.swipeUp()
+        shot("5-page-end")
+        app.buttons["cancel"].tap()
+        XCTAssertTrue(app.buttons["new-reminder"].waitForExistence(timeout: 5))
+        let vitamins = app.descendants(matching: .any)["tick-Take vitamins"]
+        if vitamins.waitForExistence(timeout: 3) { vitamins.swipeLeft() } else { app.descendants(matching: .any)["row-Take vitamins"].swipeLeft() }
+        shot("6-row-swiped")
+        app.tap()
+        app.buttons["tab-settings"].tap()
+        XCTAssertTrue(app.buttons["settings-done"].waitForExistence(timeout: 5))
+        let all = app.segmentedControls["all-nudges-choice"]
+        XCTAssertTrue(all.waitForExistence(timeout: 5))
+        all.buttons["Weekend"].tap()
+        shot("7-settings-top")
+        let quiet = app.switches["quiet-switch"]
+        _ = app.scrollTo(quiet)
+        if quiet.value as? String != "1" { quiet.switches.firstMatch.tap() }
+        shot("7-settings-quiet")
+        let later = app.descendants(matching: .any)["later-twoHours"]
+        _ = app.scrollTo(later)
+        shot("7-settings-later")
+        let cloud = app.switches["cloud-switch"]
+        _ = app.scrollTo(cloud)
+        app.swipeUp()
+        shot("7-settings-safe")
     }
 
     /// 0.4: pause one reminder until tomorrow on its page; its row says so; Settings can pause all nudges.
