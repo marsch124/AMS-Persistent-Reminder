@@ -10,7 +10,8 @@ final class SafetyUITests: XCTestCase {
         app.launch()
         app.buttons["tab-settings"].tap()
         let sw = app.switches["cloud-switch"]
-        XCTAssertTrue(sw.waitForExistence(timeout: 5) || app.descendants(matching: .any)["cloud-switch"].exists)
+        _ = app.buttons["settings-done"].waitForExistence(timeout: 5)
+        XCTAssertTrue(app.scrollTo(sw))
         XCTAssertTrue(app.staticTexts["cloud-saved-line"].exists)
         XCTAssertEqual(app.staticTexts["cloud-saved-line"].label, "Not saved yet")
         XCTAssertTrue(app.buttons["cloud-bring-back"].exists)

@@ -42,7 +42,6 @@ struct SafetySettingsSection: View {
         } footer: {
             Text("A copy is a file you keep in Files or send yourself. Bringing one back keeps your current list as a safety copy first.")
         }
-        .accessibilityIdentifier("settings-safety")
         .fileExporter(isPresented: $exporting, document: CopyDocument(data: (try? JSONEncoder.reminders.encode(store.list)) ?? Data()),
                       contentType: .json, defaultFilename: "AMS Reminder copy \(Self.fileDay())") { _ in }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in readFile(result) }

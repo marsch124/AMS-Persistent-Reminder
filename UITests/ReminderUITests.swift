@@ -24,7 +24,7 @@ final class ReminderUITests: XCTestCase {
         XCTAssertTrue(tick.waitForNonExistence(timeout: 5))
 
         app.buttons["tab-settings"].tap()
-        XCTAssertTrue(app.staticTexts["version"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["settings-done"].waitForExistence(timeout: 5))
         app.buttons["settings-done"].tap()
         let done = app.descendants(matching: .any)["done-Test reminder"]
         XCTAssertTrue(done.waitForExistence(timeout: 5))

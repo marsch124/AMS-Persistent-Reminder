@@ -45,10 +45,8 @@ struct NudgeSettingsSection: View {
                         laterSaved = LaterChoice.save(LaterChoice.picking(c, in: chosen))
                         store.refresh()
                     } label: {
-                        HStack(spacing: 4) {
-                            if on { ControlMarkView(.check, size: 11, colour: .white) }
-                            Text(c.chipTitle).font(.footnote.weight(.medium)).lineLimit(1)
-                        }
+                        // Filled purple = chosen; no tick, because a tick means "done" everywhere in this app.
+                        Text(c.chipTitle).font(.footnote.weight(.medium)).lineLimit(1)
                         .frame(maxWidth: .infinity).padding(.vertical, 7)
                         .foregroundStyle(on ? Color.white : Color.primary)
                         .background(on ? Theme.purpleFill : Color(.tertiarySystemFill), in: Capsule())

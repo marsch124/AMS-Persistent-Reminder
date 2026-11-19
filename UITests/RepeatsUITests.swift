@@ -9,9 +9,10 @@ final class RepeatsUITests: XCTestCase {
         app.buttons["new-reminder"].tap()
         let title = app.textFields.firstMatch
         title.tap()
-        title.typeText("Gym")
+        title.typeText("Gym\n")
 
         app.buttons["repeat-weekdays"].tap()
+        app.scrollTo(app.buttons["day-2"])
         XCTAssertTrue(app.buttons["day-2"].waitForExistence(timeout: 3))
         app.buttons["days-weekdays"].tap()
         XCTAssertTrue(app.buttons["day-2"].isSelected)
