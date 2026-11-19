@@ -39,8 +39,11 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
     public var tickWhenRun: Bool
     /// The colour a repeating reminder wears on its row (0.3), one of `RowColour`, or nil for none.
     public var colour: RowColour?
+    /// No nudges for this reminder before this time (0.4, "Pause nudges"); nil = not paused.
+    public var pausedUntil: Date?
 
-    public init(id: UUID = UUID(), title: String, due: Date, repeats: Repeat = .never, nudgeMinutes: Int = 5, created: Date = Date(), shortcut: String? = nil, tickWhenRun: Bool = true, colour: RowColour? = nil) {
+    public init(id: UUID = UUID(), title: String, due: Date, repeats: Repeat = .never, nudgeMinutes: Int = 5, created: Date = Date(), shortcut: String? = nil, tickWhenRun: Bool = true, colour: RowColour? = nil, pausedUntil: Date? = nil) {
+        self.pausedUntil = pausedUntil
         self.shortcut = Reminder.cleanShortcut(shortcut)
         self.tickWhenRun = tickWhenRun
         self.colour = colour
@@ -54,7 +57,7 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
 
     // Tolerant reading: a field a later version adds never makes an older file unreadable, and a
     // missing field gets a sensible value instead of losing the reminder.
-    enum CodingKeys: String, CodingKey { case id, title, due, repeats, nudgeMinutes, created, shortcut, tickWhenRun, colour }
+    enum CodingKeys: String, CodingKey { case id, title, due, repeats, nudgeMinutes, created, shortcut, tickWhenRun, colour, pausedUntil }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = (try? c.decode(UUID.self, forKey: .id)) ?? UUID()
@@ -67,6 +70,7 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
         tickWhenRun = (try? c.decode(Bool.self, forKey: .tickWhenRun)) ?? true
         // A colour an older or newer version does not know reads as none, never as a broken reminder.
         colour = try? c.decode(RowColour.self, forKey: .colour)
+        pausedUntil = try? c.decode(Date.self, forKey: .pausedUntil)
     }
 
     /// A shortcut name without spaces around it; an empty one means none.
@@ -99,6 +103,9 @@ public struct Reminder: Codable, Identifiable, Equatable, Sendable {
 
     /// Minutes between two nudges, never less than one.
     public var interval: TimeInterval { TimeInterval(max(1, nudgeMinutes) * 60) }
+
+    /// Are its nudges paused right now?
+    public func isPaused(at now: Date) -> Bool { Pause.isOn(pausedUntil, at: now) }
 
     /// Has its time come?
     public func isWaiting(at now: Date) -> Bool { due <= now }
@@ -225,6 +232,11 @@ public struct ReminderList: Codable, Equatable, Sendable {
         guard let r = reminder(id), let url = r.shortcutURL else { return nil }
         if r.ticksWhenRun { tick(id, at: now, calendar: calendar) }
         return url
+    }
+
+    /// Pauses a reminder's nudges until a time, or ends the pause (nil). The reminder itself stays as it is.
+    public mutating func pause(_ id: UUID, until date: Date?) {
+        if let i = reminders.firstIndex(where: { $0.id == id }) { reminders[i].pausedUntil = date }
     }
 
     /// Moves a reminder to a later time ("In 10 minutes" on a nudge). Its nudges start again from there.

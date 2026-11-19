@@ -17,6 +17,8 @@ struct EditReminderView: View {
     @State private var shortcut = ""
     @State private var tickWhenRun = true
     @State private var colour: RowColour?
+    @State private var pausedUntil: Date?
+    @State private var filled = false
     @State private var picking = false
     @State private var pickingDay = false
     @State private var askDelete = false
@@ -78,6 +80,9 @@ struct EditReminderView: View {
                         Text("Keeps reminding you until you tick it off.")
                     }
                     .font(.footnote).foregroundStyle(.secondary)
+
+                    heading("Pause nudges")
+                    if filled { PauseChoice(until: $pausedUntil, allowOff: false) }
 
                     heading("Shortcut")
                     HStack(spacing: 8) {
@@ -177,7 +182,9 @@ struct EditReminderView: View {
             shortcut = r.shortcut ?? ""
             tickWhenRun = r.tickWhenRun
             colour = r.colour
+            pausedUntil = r.pausedUntil
         }
+        filled = true
         pickingDay = dayChoice == .other
     }
 
@@ -188,7 +195,7 @@ struct EditReminderView: View {
         let due = self.due < Date() ? Date().addingTimeInterval(5) : self.due
         switch target {
         case .new:
-            store.add(Reminder(title: text, due: due, repeats: repeats, nudgeMinutes: nudge, shortcut: shortcut, tickWhenRun: tickWhenRun, colour: colour))
+            store.add(Reminder(title: text, due: due, repeats: repeats, nudgeMinutes: nudge, shortcut: shortcut, tickWhenRun: tickWhenRun, colour: colour, pausedUntil: pausedUntil))
         case .edit(var r):
             r.title = text
             r.due = due
@@ -197,6 +204,7 @@ struct EditReminderView: View {
             r.shortcut = Reminder.cleanShortcut(shortcut)
             r.tickWhenRun = tickWhenRun
             r.colour = colour
+            r.pausedUntil = pausedUntil
             store.update(r)
         }
         dismiss()

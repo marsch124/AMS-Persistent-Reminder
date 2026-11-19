@@ -25,14 +25,14 @@ enum Guide {
             "The big orange title says Persistent Reminders. The tab at the bottom still says Reminders.",
             "Your reminders stand in groups. “Waiting for you” (orange) holds the ones whose time has come: they are nudging you now. Then come Today (blue), Tomorrow and Later.",
             "At the bottom left, the round orange button with a white plus makes a new reminder. At the bottom right, the round green button shows the green ring of today with the number you have done inside it. Tap it to open the list of what you ticked off.",
-            "If you switched Nudges off in Settings, a line “Nudges are paused.” with a “Turn on” button stands at the top of the list.",
+            "If you paused all nudges in Settings, a line “Nudges are paused until …” (or “Nudges are off.”) with a “Turn on” button stands at the top of the list.",
         ]),
         Part(title: "One row", text: [
             "Tap anywhere on the circle, the title or the small grey line, which is most of the row, and the reminder is done. You feel a short, happy buzz, and the circle turns into a green tick. The title is not struck through. Then the reminder leaves the list.",
-            "In the middle are the title and a small grey line. A waiting reminder says, for example, “Nudging every 5 min · 3rd nudge”. Other ones say how they repeat (“Every day”, “Every Thursday”) or “Nudge every 10 min”.",
+            "In the middle are the title and a small grey line. A waiting reminder says, for example, “Nudging every 5 min · 3rd nudge”. Other ones say how they repeat (“Every day”, “Every Thursday”) or “Nudge every 10 min”. A paused reminder says “Paused until tomorrow 08:00” (or, for example, “Paused until Mon 23 Nov, 08:00”), with a small purple pause mark, two short upright lines, in place of the bell or the repeat mark. Ticking it off works as always.",
             "On the right is the time, with a small pencil under it. Tap the time or the pencil to change the reminder.",
             "A repeating reminder with a colour stands in a frame of that colour, with a faint tint of it inside. A thin bar in that colour sits at the left of the row, and its tick circle and its small repeat mark have the colour too. A one-off reminder never shows a colour.",
-            "Swipe a row to the left to delete it. Swipe it to the right to tick it off.",
+            "Swipe a row to the left to delete it, or to pause it: the purple “Pause” button offers “Until tomorrow 08:00” and “Pick a day…” (that opens the reminder’s page). A paused reminder offers “Nudge again now” there instead. Swipe a row to the right to tick it off.",
             "Press and hold a row that has a shortcut for half a second. You feel a short buzz, and its shortcut runs. If “Tick off when it runs” is on for that reminder, it is ticked off at the same moment. A row without a shortcut does nothing when you press and hold it.",
         ]),
         Part(title: "Making and changing a reminder", text: [
@@ -42,11 +42,13 @@ enum Guide {
             "Repeat: Never, Daily, Weekly or Monthly. When it repeats, a row of colour dots appears under Repeat: “no colour” (a crossed circle) and Red, Orange, Yellow, Green, Teal, Blue, Purple and Pink. Tap one and it gets a ring. Nudge me every: 1, 5, 10, 15, 30 or 60 minutes.",
             "Shortcut: under “Nudge me every” you can type the name of one Apple Shortcut, or press the purple “Pick” button next to the field and choose it from a list. It is optional. Once you have typed a name, a small “Try it” button appears next to the field and runs the shortcut right away.",
             "Under the field is the switch “Tick off when it runs”. It is on at first. Under it a small line says “Press and hold the nudge or the row to run it.”",
+            "Pause nudges: a choice row On, Tomorrow, Pick a day. Tomorrow means no nudges for this reminder until tomorrow at 08:00. Pick a day opens a calendar, and the nudges come back on that day at 08:00. A small line under it says when the nudges come back. Cancel drops the choice, Save keeps it.",
             "Cancel leaves without saving. Save keeps it. When you change an existing reminder, a Delete button is there too.",
         ]),
         Part(title: "How the nudging works", text: [
             "At the time you chose, your iPhone shows a message, also on the lock screen. The first nudge comes at that exact time. After that it nudges again every few minutes, as often as you chose, until you tick it off. The message says, for example, “Since 08:00 · 3rd nudge”.",
             "On the row, the nudge count grows by itself while you look at it.",
+            "You can pause one reminder (see “Making and changing a reminder”) or all of them (see Settings). While it is paused it does not nudge you. Nothing is lost: a pause never moves a reminder or ticks it off, and when the pause ends the nudges simply start again, at 08:00 on the day you chose.",
         ]),
         Part(title: "Answering a nudge", text: [
             "Press and hold the message. Buttons appear: Done, In 10 minutes, In 1 hour and This evening. If the reminder has a shortcut, the first button is “Run: ” and the name of the shortcut, before all the others. Late in the day, “This evening” turns into “Tomorrow morning, 08:00”.",
@@ -83,7 +85,7 @@ enum Guide {
         ]),
         Part(title: "Settings, and your data", text: [
             "Nudge me every: the choice that a new reminder starts with. At first it is 5 minutes. Each reminder can still have its own.",
-            "Nudges is a switch. Off: the app pauses all nudges. None are planned, and your reminders stay in the list. On: the nudges come back. If your iPhone itself does not let the app nudge you, the row shows a “Turn on” button that opens the iPhone’s settings for the app. When nudges are paused, the Reminders screen says so too, with a “Turn on” button.",
+            "Nudges is a choice row: On, Tomorrow, Pick a day, Off. Tomorrow and Pick a day pause the nudges of every reminder at once, and they come back by themselves at 08:00 on that day. Off means no nudges until you switch them On again. A small line under the row says when they come back. Your reminders stay in the list all the time. If your iPhone itself does not let the app nudge you, the row shows a “Turn on” button that opens the iPhone’s settings for the app. While all nudges are paused, the Reminders screen says so too, with a “Turn on” button.",
             "The Settings title is purple, like the Settings mark at the bottom right.",
             "Shortcuts (purple heading): “Your shortcuts” says how many are loaded, for example “37 loaded”, or “None yet”. It opens the list page, where you can load them or load them again.",
             "How it works is this guide. What’s new lists every version. The version number stands at the bottom.",
@@ -96,15 +98,25 @@ enum Guide {
             "Green tick: done. In a row it shows for a moment before the reminder leaves; in Done it marks what you ticked off.",
             "Orange: the time has come and the reminder is nudging you. The circle, the small bell and the grey line turn orange, and the group “Waiting for you” is orange. The title Persistent Reminders and the bell at the bottom are orange too.",
             "Small circling arrows beside the grey line: the reminder repeats.",
+            "Small purple pause mark (two short upright lines) beside the grey line: this reminder is paused and does not nudge you until the time the line names. Purple is also the colour of the Pause button and of “Pause nudges”.",
             "A colour (frame, thin bar at the left, circle and repeat mark): the colour you gave a repeating reminder. A crossed circle in the colour row means no colour.",
             "Ring around a colour dot: the colour you chose.",
             "Small pencil under the time: tap the time or the pencil to change the reminder.",
-            "Purple play mark: a shortcut. It stands beside the shortcut hint on the edit screen, in front of each name in “Your shortcuts” and at the Shortcuts row in Settings. Purple is also the colour of the Settings heading and the Settings mark at the bottom right.",
+            "Purple play mark: a shortcut. It stands beside the shortcut hint on the edit screen, in front of each name in “Your shortcuts” and at the Shortcuts row in Settings. Purple is also the colour of the Settings heading and the Settings mark at the bottom right. Purple also means nudges and pausing them: the pause mark, the Pause button and the Nudges row.",
             "Blue: the Today group.",
         ]),
     ]
 
     static let news: [Release] = [
+        Release(version: "0.4", date: "19 Nov 2026", items: [
+            "New: you can pause the nudges of one reminder. On the reminder’s page (tap the time or the pencil) there is a new part “Pause nudges” with a choice row: On, Tomorrow, Pick a day. Tomorrow means no nudges for this reminder until tomorrow at 08:00. Pick a day opens a calendar, and the nudges come back on that day at 08:00. A small line under the row says when they come back. Save keeps it, Cancel drops it.",
+            "New: a quicker way. Swipe a reminder to the left and press the purple “Pause” button. Choose “Until tomorrow 08:00”, or “Pick a day…” (it opens the reminder’s page). When the reminder is already paused, the button offers “Nudge again now”.",
+            "New: a paused reminder stays in the list. Its small grey line says “Paused until tomorrow 08:00” (or, for example, “Paused until Mon 23 Nov, 08:00”), with a small purple pause mark, two short upright lines, in place of the bell or the repeat mark. Ticking it off works as always.",
+            "Changed: in Settings › Nudges, the on/off switch of 0.3.4 is now a choice row: On, Tomorrow, Pick a day, Off. Tomorrow and Pick a day pause all reminders at once, and the nudges come back by themselves at 08:00 on that day. Off means no nudges until you switch them On again. A small line under it says when they come back. If you had switched Nudges off in 0.3.4, it now reads Off.",
+            "Changed: while all nudges are paused, the Reminders screen shows “Nudges are paused until …” (or “Nudges are off.”) with a “Turn on” button.",
+            "Good to know: nothing is lost. Pausing never moves a reminder or ticks it off. When the pause ends, the nudges simply start again.",
+            "Changed: “How it works” now tells about pausing in the parts One row, Making and changing a reminder, How the nudging works and Settings. “Signs in this app” has the purple pause mark, and says that purple means nudges and pausing them.",
+        ]),
         Release(version: "0.3.4", date: "19 Nov 2026", items: [
             "Changed: when you tick off a reminder, its title is no longer struck through. The circle turns into a green tick, and then the reminder leaves the list.",
             "Removed: the small round purple play button on a row. It showed that a reminder has a shortcut. Press and hold still runs the shortcut, and the edit screen still shows which shortcut the reminder has.",

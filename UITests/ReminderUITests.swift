@@ -175,4 +175,37 @@ final class ReminderUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["done-hero"].waitForExistence(timeout: 5))
         shot("4-done")
     }
+
+    /// 0.4: pause one reminder until tomorrow on its page; its row says so; Settings can pause all nudges.
+    func testPauseNudges() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting", "-sample"]
+        app.launch()
+        app.descendants(matching: .any)["edit-Call the dentist"].tap()
+        let choice = app.segmentedControls["pause-choice"]
+        app.swipeUp()
+        XCTAssertTrue(choice.waitForExistence(timeout: 5))
+        choice.buttons["Tomorrow"].tap()
+        app.buttons["save"].tap()
+        let row = app.descendants(matching: .any)["tick-Call the dentist"]
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertEqual(row.value as? String, "Paused until tomorrow 08:00")
+        // The quick way: swipe left → Pause → Nudge again now / Until tomorrow 08:00.
+        row.swipeLeft()
+        app.buttons["Pause"].tap()
+        app.buttons["Nudge again now"].tap()
+        let back = expectation(for: NSPredicate(format: "value == %@", "Nudge every 10 min"), evaluatedWith: row)
+        wait(for: [back], timeout: 5)
+        row.swipeLeft()
+        app.buttons["Pause"].tap()
+        app.buttons["Until tomorrow 08:00"].tap()
+        let again = expectation(for: NSPredicate(format: "value == %@", "Paused until tomorrow 08:00"), evaluatedWith: row)
+        wait(for: [again], timeout: 5)
+        app.buttons["tab-settings"].tap()
+        let all = app.segmentedControls["all-nudges-choice"]
+        XCTAssertTrue(all.waitForExistence(timeout: 5))
+        all.buttons["Off"].tap()
+        app.buttons["tab-reminders"].tap()
+        XCTAssertTrue(app.staticTexts["all-paused-line"].waitForExistence(timeout: 5))
+    }
 }

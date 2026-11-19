@@ -28,6 +28,9 @@ final class Store: ObservableObject {
         fileURL = base.appendingPathComponent("reminders.json")
         backupFolder = base.appendingPathComponent("Safety copies", isDirectory: true)
         if isTesting {
+            // Every test run starts with nudges on (no pause left over from an earlier run).
+            UserDefaults.standard.removeObject(forKey: "nudgesPausedUntil")
+            UserDefaults.standard.removeObject(forKey: "nudgesPaused")
             list = args.contains("-sample") ? Sample.list(now: now) : ReminderList()
             shortcutNames = args.contains("-sample") ? ["Call Andreas Bjurling", "Coffee timer", "Play morning music", "Weather today"] : []
         } else {
@@ -41,6 +44,7 @@ final class Store: ObservableObject {
     func add(_ r: Reminder) { change { $0.add(r) } }
     func update(_ r: Reminder) { change { $0.update(r) } }
     func delete(_ id: UUID) { change { $0.delete(id) } }
+    func pause(_ id: UUID, until date: Date?) { change { $0.pause(id, until: date) } }
     func snooze(_ id: UUID, to date: Date) { change { $0.snooze(id, to: date) } }
     func bringBack(_ entryID: UUID) { change { $0.bringBack(entryID) } }
 

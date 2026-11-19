@@ -53,8 +53,19 @@ enum Nudger {
         UIApplication.shared.open(url)
     }
 
-    /// Settings → Nudges switch off = every nudge paused.
-    static let pausedKey = "nudgesPaused"
+    /// Settings → Nudges (0.4): every nudge paused until this time (seconds since 2001; 0 = not paused).
+    static let pausedKey = "nudgesPausedUntil"
+
+    /// The pause of all nudges, or nil. The 0.3.4 switch "off" reads as Off.
+    static var allPausedUntil: Date? {
+        let d = UserDefaults.standard
+        if d.bool(forKey: "nudgesPaused") {
+            d.set(Pause.forever.timeIntervalSinceReferenceDate, forKey: pausedKey)
+            d.removeObject(forKey: "nudgesPaused")
+        }
+        let t = d.double(forKey: pausedKey)
+        return t == 0 ? nil : Date(timeIntervalSinceReferenceDate: t)
+    }
 
     static func askPermission() async -> Bool {
         (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
@@ -70,12 +81,10 @@ enum Nudger {
         guard Store.shared.nudgesOn else { return }
         let c = UNUserNotificationCenter.current()
         c.removeAllPendingNotificationRequests()
-        // Paused in Settings (0.3.4): plan nothing until the switch is on again.
-        if UserDefaults.standard.bool(forKey: pausedKey) { return }
         setCategories(reminders)
         let now = Date()
         let cal = Calendar.current
-        for p in NudgePlan.plan(reminders, from: now) {
+        for p in NudgePlan.plan(reminders, from: now, allPausedUntil: allPausedUntil) {
             guard let r = reminders.first(where: { $0.id == p.reminderID }) else { continue }
             let content = UNMutableNotificationContent()
             content.title = r.title

@@ -8,7 +8,7 @@ import ReminderCore
 struct SettingsScreen: View {
     @EnvironmentObject private var store: Store
     @AppStorage("defaultNudge") private var defaultNudge = 5
-    @AppStorage(Nudger.pausedKey) private var nudgesPaused = false
+    @AppStorage(Nudger.pausedKey) private var pausedAll: Double = 0
     @State private var allowed: Bool?
     @State private var planned = ""
 
@@ -44,29 +44,32 @@ struct SettingsScreen: View {
                             Text("Nudge me every")
                         }
                     }
-                    // 0.3.4 (his ask): a real switch. Off pauses every nudge; the iPhone's own permission
-                    // is only asked for (Turn on) when the iPhone itself does not allow them.
-                    HStack(spacing: 12) {
-                        AppMarkView(.info, size: 24, colour: Theme.purple)
-                        if allowed == false {
-                            Text("Nudges")
+                    // 0.4 (his ask): pause every nudge for a day, until a day, or switch them off.
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 12) {
+                            ControlMarkView(.pause, size: 24, colour: Theme.purple)
+                            Text("Pause all nudges")
+                        }
+                        PauseChoice(until: Binding(get: { pausedAll == 0 ? nil : Date(timeIntervalSinceReferenceDate: pausedAll) },
+                                                   set: { pausedAll = $0?.timeIntervalSinceReferenceDate ?? 0; store.refresh() }),
+                                    allowOff: true, id: "all-nudges")
+                    }
+                    if allowed == false {
+                        HStack(spacing: 12) {
+                            AppMarkView(.info, size: 24, colour: Theme.purple)
+                            Text("Your iPhone does not allow nudges.").font(.subheadline)
                             Spacer()
                             Button("Turn on") {
                                 if let url = URL(string: UIApplication.openNotificationSettingsURLString) { UIApplication.shared.open(url) }
                             }
                             .buttonStyle(.borderedProminent).tint(Theme.purple).controlSize(.small)
                             .accessibilityIdentifier("nudges-turn-on")
-                        } else {
-                            Toggle("Nudges", isOn: Binding(get: { !nudgesPaused },
-                                                           set: { nudgesPaused = !$0; store.refresh() }))
-                                .tint(Theme.purple)
-                                .accessibilityIdentifier("nudges-switch")
                         }
                     }
                 } header: {
                     Text("Nudges").foregroundStyle(Theme.purple)
                 } footer: {
-                    Text(nudgesPaused ? "Nudges are paused: nothing will remind you until you switch them on again." : "New reminders start with this. You can change it for each reminder.")
+                    Text("New reminders start with this. You can change it, and pause it, on each reminder.")
                 }
 
                 Section {
@@ -108,6 +111,7 @@ struct SettingsScreen: View {
             .navigationTitle("Settings")
             .toolbar(.hidden, for: .navigationBar)
             .task(id: store.now) {
+                _ = Nudger.allPausedUntil   // reads the 0.3.4 switch over, once
                 allowed = (store.isTesting && !store.nudgesOn) ? true : await Nudger.isAllowed()
                 if store.isTesting && store.nudgesOn {
                     let c = UNUserNotificationCenter.current()

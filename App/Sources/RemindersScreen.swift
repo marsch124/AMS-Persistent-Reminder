@@ -9,7 +9,8 @@ struct RemindersScreen: View {
     @State private var editing: EditTarget?
     @State private var showDone = false
     @State private var nudgesOff = false
-    @AppStorage(Nudger.pausedKey) private var nudgesPaused = false
+    @AppStorage(Nudger.pausedKey) private var pausedAll: Double = 0
+    @State private var pausing: Reminder?
 
     var body: some View {
         let now = store.now
@@ -32,12 +33,16 @@ struct RemindersScreen: View {
                                 .buttonStyle(.borderedProminent).tint(Theme.purple).controlSize(.small)
                         }
                     }
-                } else if nudgesPaused {
+                } else if pausedAll != 0, Pause.isOn(Date(timeIntervalSinceReferenceDate: pausedAll), at: now) {
+                    let until = Date(timeIntervalSinceReferenceDate: pausedAll)
                     Section {
-                        HStack {
-                            Text("Nudges are paused.").font(.subheadline)
+                        HStack(spacing: 8) {
+                            ControlMarkView(.pause, size: 18, colour: Theme.purple)
+                            Text(until >= Pause.forever ? "Nudges are off." : "Nudges are paused \(Pause.text(until, at: now)).")
+                                .font(.subheadline)
+                                .accessibilityIdentifier("all-paused-line")
                             Spacer()
-                            Button("Turn on") { nudgesPaused = false; store.refresh() }
+                            Button("Turn on") { pausedAll = 0; store.refresh() }
                                 .buttonStyle(.borderedProminent).tint(Theme.purple).controlSize(.small)
                                 .accessibilityIdentifier("unpause-nudges")
                         }
@@ -103,6 +108,13 @@ struct RemindersScreen: View {
             .sheet(item: $editing) { target in
                 EditReminderView(target: target)
             }
+            .confirmationDialog("Pause nudges for \(pausing?.title ?? "")", isPresented: Binding(get: { pausing != nil }, set: { if !$0 { pausing = nil } }), titleVisibility: .visible, presenting: pausing) { r in
+                Button("Until tomorrow 08:00") { withAnimation { store.pause(r.id, until: Pause.tomorrow(after: Date())) } }
+                Button("Pick a day…") { editing = .edit(r) }
+                if r.isPaused(at: store.now) {
+                    Button("Nudge again now") { withAnimation { store.pause(r.id, until: nil) } }
+                }
+            }
             .sheet(isPresented: $showDone) {
                 NavigationStack {
                     DoneScreen()
@@ -123,7 +135,7 @@ struct RemindersScreen: View {
             Section {
                 ForEach(items) { r in
                     // 0.3.3 (his ask): most of the row ticks it off; only the time and the small pencil on the right open it.
-                    ReminderRow(reminder: r, now: store.now, colour: colour, waiting: mark,
+                    ReminderRow(reminder: r, now: store.now, allPausedUntil: pausedAll == 0 ? nil : Date(timeIntervalSinceReferenceDate: pausedAll), colour: colour, waiting: mark,
                                 onTick: { store.tick(r.id) },
                                 onEdit: { editing = .edit(r) },
                                 onRun: { runShortcut(r) })
@@ -133,6 +145,7 @@ struct RemindersScreen: View {
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) { store.delete(r.id) } label: { Text("Delete") }
+                        Button { pausing = r } label: { Text("Pause") }.tint(Theme.purple)
                     }
                 }
             } header: {
@@ -189,6 +202,7 @@ struct RemindersScreen: View {
 struct ReminderRow: View {
     let reminder: Reminder
     let now: Date
+    let allPausedUntil: Date?
     let colour: Color
     let waiting: Bool
     let onTick: () -> Void
@@ -210,6 +224,8 @@ struct ReminderRow: View {
         .accessibilityIdentifier("row-\(reminder.title)")
     }
 
+    private var paused: Bool { reminder.isPaused(at: now) || (waiting && Pause.isOn(allPausedUntil, at: now)) }
+
     private var tickArea: some View {
         HStack(spacing: 11) {
             Group {
@@ -223,14 +239,15 @@ struct ReminderRow: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(reminder.title).font(.body)
                 HStack(spacing: 4) {
-                    if waiting { AppMarkView(.bell, size: 12) }
+                    if paused { ControlMarkView(.pause, size: 12, colour: Theme.purple) }
+                    else if waiting { AppMarkView(.bell, size: 12) }
                     else if reminder.repeats != .never {
                         AppMarkView(.repeat, size: 12, colour: reminder.shownColour.map(Theme.row) ?? .secondary)
                     }
-                    Text(Words.rowLine(reminder, at: now))
+                    Text(Words.rowLine(reminder, at: now, allPausedUntil: allPausedUntil))
                 }
                 .font(.footnote)
-                .foregroundStyle(waiting ? Theme.orange : Color.secondary)
+                .foregroundStyle(waiting && !paused ? Theme.orange : Color.secondary)
             }
             Spacer(minLength: 4)
         }
@@ -240,6 +257,7 @@ struct ReminderRow: View {
         .onLongPressGesture(minimumDuration: 0.5, perform: onRun)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Tick off \(reminder.title)")
+        .accessibilityValue(Words.rowLine(reminder, at: now, allPausedUntil: allPausedUntil))
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { tick() }
         .accessibilityIdentifier("tick-\(reminder.title)")

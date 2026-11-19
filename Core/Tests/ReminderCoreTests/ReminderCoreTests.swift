@@ -175,5 +175,31 @@ final class ReminderCoreTests: XCTestCase {
         XCTAssertEqual(read.title, "Odd")
         XCTAssertNil(read.colour)
     }
-}
 
+    // 0.4: a paused reminder gets no nudges until its pause ends, then they start again; the others go on.
+    func testAPausedReminderWaitsUntilThePauseEnds() throws {
+        let resume = Pause.tomorrow(after: d(19, 9), calendar: cal)
+        XCTAssertEqual(resume, d(20, 8))
+        let paused = Reminder(title: "Vitamins", due: d(19, 8), nudgeMinutes: 5, pausedUntil: resume)
+        let other = Reminder(title: "Call", due: d(19, 8), nudgeMinutes: 5)
+        let plan = NudgePlan.plan([paused, other], from: d(19, 9))
+        XCTAssertTrue(plan.filter { $0.reminderID == paused.id }.allSatisfy { $0.date >= resume })
+        XCTAssertEqual(plan.first?.reminderID, other.id)
+        XCTAssertEqual(NudgePlan.plan([paused], from: d(19, 9)).first?.date, d(20, 8))
+        XCTAssertEqual(Words.rowLine(paused, at: d(19, 9), calendar: cal), "Paused until tomorrow 08:00")
+        XCTAssertEqual(Pause.text(d(23, 8), at: d(19, 9), calendar: cal), "until Mon 23 Nov, 08:00")
+        let back = try JSONDecoder().decode(Reminder.self, from: JSONEncoder().encode(paused))
+        XCTAssertEqual(back.pausedUntil, resume)
+        XCTAssertFalse(paused.isPaused(at: d(20, 8)))
+    }
+
+    // 0.4: pausing all nudges plans them only from the pause's end; Off plans none.
+    func testPausingAllNudges() {
+        let r = Reminder(title: "Vitamins", due: d(19, 8), nudgeMinutes: 5)
+        let plan = NudgePlan.plan([r], from: d(19, 9), allPausedUntil: d(23, 8))
+        XCTAssertEqual(plan.first?.date, d(23, 8))
+        XCTAssertTrue(NudgePlan.plan([r], from: d(19, 9), allPausedUntil: Pause.forever).isEmpty)
+        XCTAssertEqual(NudgePlan.plan([r], from: d(19, 9), allPausedUntil: d(19, 8, 30)).first?.date, d(19, 9, 5))
+        XCTAssertEqual(Words.rowLine(r, at: d(19, 9), allPausedUntil: Pause.forever, calendar: cal), "Paused until you turn them on")
+    }
+}
