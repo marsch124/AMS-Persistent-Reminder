@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UserNotifications
 import AMSIcons
 import ReminderCore
 
@@ -8,6 +9,7 @@ struct SettingsScreen: View {
     @EnvironmentObject private var store: Store
     @AppStorage("defaultNudge") private var defaultNudge = 5
     @State private var allowed: Bool?
+    @State private var planned = ""
 
     var body: some View {
         let doneToday = store.list.doneToday(at: store.now).count
@@ -41,7 +43,7 @@ struct SettingsScreen: View {
                         Text("Nudges allowed")
                         Spacer()
                         switch allowed {
-                        case true?: Text("Yes").foregroundStyle(Theme.green)
+                        case true?: Text("Yes").foregroundStyle(Theme.green).accessibilityIdentifier("nudges-allowed-yes")
                         case false?:
                             Button("Turn on") {
                                 if let url = URL(string: UIApplication.openNotificationSettingsURLString) { UIApplication.shared.open(url) }
@@ -69,11 +71,23 @@ struct SettingsScreen: View {
                     Text("AMS Persistent Reminder \(Theme.version)")
                         .frame(maxWidth: .infinity).padding(.top, 14)
                         .accessibilityIdentifier("version")
+                    if store.isTesting && store.nudgesOn {
+                        Text(planned).font(.caption2).accessibilityIdentifier("planned")
+                    }
                 }
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Settings")
-            .task(id: store.now) { allowed = store.isTesting ? true : await Nudger.isAllowed() }
+            .task(id: store.now) {
+                allowed = (store.isTesting && !store.nudgesOn) ? true : await Nudger.isAllowed()
+                if store.isTesting && store.nudgesOn {
+                    let c = UNUserNotificationCenter.current()
+                    let p = await c.pendingNotificationRequests()
+                    let d = await c.deliveredNotifications()
+                    let first = p.compactMap { ($0.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate() }.min()
+                    planned = "planned \(p.count) delivered \(d.count) next \(first.map { Theme.time($0) + String(format: ":%02d", Calendar.current.component(.second, from: $0)) } ?? "none") now \(Theme.time(Date()))"
+                }
+            }
         }
     }
 }

@@ -13,7 +13,7 @@ settings:
     SWIFT_VERSION: "5.0"
     # The version lives here only; the Info.plist reads it from these two.
     MARKETING_VERSION: "0.1"
-    CURRENT_PROJECT_VERSION: "1"
+    CURRENT_PROJECT_VERSION: "2"
 packages:
   # The rules: reminders, ticking off, repeating, quick times, the nudge plan. No screen in it.
   ReminderCore:

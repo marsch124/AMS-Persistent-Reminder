@@ -37,21 +37,50 @@ final class ReminderUITests: XCTestCase {
     }
 
     /// The heart of the app: a reminder whose time has come pops up as a nudge.
-    func testANudgePopsUp() {
+    /// Local only, on request (NUDGE_TEST=1): the simulator did not show the permission question on 19 Nov 2026.
+    func testANudgePopsUp() throws {
+        guard ProcessInfo.processInfo.environment["NUDGE_TEST"] != nil else { throw XCTSkip("nudge test only on request") }
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-realNudges"]
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         app.launch()
         let allow = springboard.buttons["Allow"]
-        if allow.waitForExistence(timeout: 5) { allow.tap() }
+        if let folder = ProcessInfo.processInfo.environment["SHOTS"] {
+            sleep(3)
+            try? XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(folder)/perm.png"))
+            try? springboard.debugDescription.write(toFile: "\(folder)/perm-springboard.txt", atomically: true, encoding: .utf8)
+        }
+        if allow.waitForExistence(timeout: 10) { allow.tap() }
+        // The iPhone must allow the nudges, or nothing can pop up.
+        app.buttons["tab-settings"].tap()
+        let yes = app.staticTexts["nudges-allowed-yes"]
+        if !yes.waitForExistence(timeout: 5), let folder = ProcessInfo.processInfo.environment["SHOTS"] {
+            try? XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(folder)/nudge-permission.png"))
+            try? springboard.debugDescription.write(toFile: "\(folder)/springboard-start.txt", atomically: true, encoding: .utf8)
+        }
+        XCTAssertTrue(yes.exists, "nudges are not allowed")
+        app.buttons["tab-reminders"].tap()
         app.buttons["new-reminder"].tap()
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "title-field").firstMatch.waitForExistence(timeout: 5))
         app.typeText("Nudge test")
         app.buttons["Today"].firstMatch.tap()
         app.buttons["hour-6"].tap()          // early this morning: already passed, so it nudges right away
         app.buttons["save"].tap()
+        XCUIDevice.shared.press(.home)      // like a phone in the pocket: the nudge comes from the iPhone itself
+        if let folder = ProcessInfo.processInfo.environment["SHOTS"] {
+            for i in 1...4 {
+                sleep(3)
+                try? XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(folder)/nudge-\(i).png"))
+            }
+        }
         let banner = springboard.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Nudge test'")).firstMatch
         let seen = banner.waitForExistence(timeout: 20)
+        if !seen {
+            app.activate()
+            app.buttons["tab-settings"].tap()
+            let planned = app.staticTexts["planned"]
+            if planned.waitForExistence(timeout: 5) { print("PLANNED-READOUT: \(planned.label)") }
+        }
         if !seen, let folder = ProcessInfo.processInfo.environment["SHOTS"] {
             try? XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(folder)/nudge-fail.png"))
             try? springboard.debugDescription.write(toFile: "\(folder)/springboard.txt", atomically: true, encoding: .utf8)

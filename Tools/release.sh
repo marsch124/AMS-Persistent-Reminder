@@ -24,4 +24,4 @@ one() {   # one <ios|mac>
     2>&1 | grep -E "error:|EXPORT (SUCCEEDED|FAILED)|Upload" | sort -u
 }
 one ios
-echo "Now check GET /v1/apps/<app id>/buildUploads for Apple's verdict, then release-to-testers.py."
+echo "Now check GET /v1/apps/6836678626/buildUploads for Apple's verdict, then release-to-testers.py."

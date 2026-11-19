@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Builds the AMS Persistent Reminder app icon: a flat calm warm orange tile with a white hand-drawn bell.
-One 1.9 stroke on the 24-point grid with round ends, like every AMS icon (shape from the AMS-Icons
-"bell"). No transparency in the iPhone picture.
+"""Builds the AMS Persistent Reminder app icon: a flat calm warm orange tile with a white hand-drawn bell
+inside a loop arrow ("it keeps coming back" — his pick 3A, 19 Nov 2026). One 1.9 stroke on the 24-point
+grid with round ends, like every AMS icon (bell = the AMS-Icons "bell" mark). The drawing is the SVG below,
+drawn by Chrome (headless) so curves are exact. No transparency in the iPhone picture.
 
 Writes App/Resources/Assets.xcassets (AppIcon.appiconset: iPhone 1024 only; AccentColor) and Docs/icon-1024.png.
 Run:  python3 Tools/make-icon.py        (needs Pillow)
@@ -55,12 +56,28 @@ def draw_glyph(d, size, share, stroke):
     line(CLAPPER)
 
 
-def phone_icon(ss=4):
-    """Full square, no transparency: iOS rounds the corners itself."""
-    s = 1024 * ss
-    img = Image.new("RGB", (s, s), TILE_COLOUR)
-    draw_glyph(ImageDraw.Draw(img), s, 0.70, STROKE)
-    return img.resize((1024, 1024), Image.LANCZOS)
+BELL = "M12 3.2v1.8 M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15Z M10 20.5a2 2 0 0 0 4 0"
+LOOP = "M17 3.34A10 10 0 1 1 7 3.34 M7 3.34l-1.3 2.7 M7 3.34l-3-.3"
+CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+
+
+def phone_icon():
+    """Full square, no transparency: iOS rounds the corners itself. The glyph fills 75 % of the tile."""
+    import subprocess, tempfile
+    hexc = "#%02X%02X%02X" % TILE_COLOUR
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="-4 -4 32 32" fill="none" '
+           f'stroke="#fff" stroke-width="{STROKE}" stroke-linecap="round" stroke-linejoin="round">'
+           f'<rect x="-4" y="-4" width="32" height="32" fill="{hexc}" stroke="none"/>'
+           f'<g transform="translate(5.3 5.6) scale(0.56)"><path d="{BELL}"/></g><path d="{LOOP}"/></svg>')
+    tmp = tempfile.mkdtemp()
+    page = os.path.join(tmp, "icon.html")
+    with open(page, "w") as f:
+        f.write(f'<html><body style="margin:0;background:{hexc}">{svg}</body></html>')
+    out = os.path.join(tmp, "icon.png")
+    subprocess.run([CHROME, "--headless=new", "--hide-scrollbars", "--force-device-scale-factor=1",
+                    "--window-size=1024,1024", f"--screenshot={out}", "file://" + page],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    return Image.open(out).convert("RGB").resize((1024, 1024), Image.LANCZOS)
 
 
 def colour(hexs):
