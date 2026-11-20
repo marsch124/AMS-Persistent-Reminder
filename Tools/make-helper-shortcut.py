@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Builds the helper shortcut "AMS Reminder List" and signs it so anyone can add it.
+"""Builds the helper shortcut "AMS Persistent Reminder Helper" and signs it so anyone can add it.
 
 What it does on the iPhone: Get My Shortcuts → one name per line → URL-encode →
 opens amsreminder://shortcuts?names=<the list>, and the app keeps the list for its picker.
-Run: python3 Tools/make-helper-shortcut.py   (writes App/Resources/AMS Reminder List.shortcut)
+Run: python3 Tools/make-helper-shortcut.py   (writes App/Resources/AMS Persistent Reminder Helper.shortcut)
 """
 import plistlib, subprocess, uuid, pathlib, tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-OUT = ROOT / "App/Resources/AMS Reminder List.shortcut"
+OUT = ROOT / "App/Resources/AMS Persistent Reminder Helper.shortcut"
 U = [str(uuid.uuid4()).upper() for _ in range(5)]
 OBJ = "￼"
 
@@ -48,7 +48,7 @@ wf = {
     "WFWorkflowActions": actions,
 }
 with tempfile.TemporaryDirectory() as tmp:
-    raw = pathlib.Path(tmp) / "AMS Reminder List.shortcut"
+    raw = pathlib.Path(tmp) / "AMS Persistent Reminder Helper.shortcut"
     raw.write_bytes(plistlib.dumps(wf, fmt=plistlib.FMT_BINARY))
     subprocess.run(["shortcuts", "sign", "--mode", "anyone", "--input", str(raw), "--output", str(OUT)], check=True)
 print("signed:", OUT, OUT.stat().st_size, "bytes")

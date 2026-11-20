@@ -154,8 +154,9 @@ final class ReminderCoreTests: XCTestCase {
     }
 
     // 0.3: the helper shortcut sends his shortcut names back; the picker sorts and searches them.
+    // 0.5.2: the helper (new name) and its old name "AMS Reminder List" never show in the list.
     func testShortcutNamesFromTheHelper() {
-        let url = URL(string: "amsreminder://shortcuts?names=Play%20music%0ACall%20Andreas%20Bjurling%0A%0AAMS%20Reminder%20List%0Aair%20quality%0APlay%20music")!
+        let url = URL(string: "amsreminder://shortcuts?names=Play%20music%0ACall%20Andreas%20Bjurling%0A%0AAMS%20Reminder%20List%0AAMS%20Persistent%20Reminder%20Helper%0Aair%20quality%0APlay%20music")!
         let names = ShortcutNames.read(url)
         XCTAssertEqual(names, ["air quality", "Call Andreas Bjurling", "Play music"])
         XCTAssertNil(ShortcutNames.read(URL(string: "https://example.com/shortcuts?names=x")!))

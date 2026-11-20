@@ -3,7 +3,7 @@ import UIKit
 import AMSIcons
 import ReminderCore
 
-/// "Your shortcuts": every shortcut's name, sent by the helper shortcut "AMS Reminder List".
+/// "Your shortcuts": every shortcut's name, sent by the helper shortcut "AMS Persistent Reminder Helper".
 /// From a reminder, tapping a name puts it into the Shortcut field; from Settings it is only a list.
 struct ShortcutPicker: View {
     @EnvironmentObject private var store: Store

@@ -75,9 +75,9 @@ enum Guide {
         ]),
         Part(title: "Shortcuts", text: [
             "You can type the name of a shortcut, or pick it from a list. Next to the Shortcut field is a purple “Pick” button. It opens “Your shortcuts”: the names of all your shortcuts, with a search field at the top. Tap one and it goes into the field.",
-            "An iPhone app cannot look at your shortcuts by itself. So a small helper shortcut called “AMS Reminder List” does it for the app. You set it up once.",
-            "The first time, the list page says so and shows two steps. Step 1, “Add the helper”: the iPhone's share list opens. Choose Shortcuts in it, then press “Add Shortcut”. If “AMS Reminder List” is already in your Shortcuts app (it comes over by itself from your Mac), skip this step. Step 2, “Load my shortcuts”: it runs the helper. The Shortcuts app flashes up for a moment and comes back with your list.",
-            "The first time it runs, your iPhone may ask whether “AMS Reminder List” may open Persistent. Answer Allow, or Always Allow.",
+            "An iPhone app cannot look at your shortcuts by itself. So a small helper shortcut called “AMS Persistent Reminder Helper” does it for the app. You set it up once.",
+            "The first time, the list page says so and shows two steps. Step 1, “Add the helper”: the iPhone's share list opens. Choose Shortcuts in it, then press “Add Shortcut”. If “AMS Persistent Reminder Helper” is already in your Shortcuts app (it comes over by itself from your Mac), skip this step. Step 2, “Load my shortcuts”: it runs the helper. The Shortcuts app flashes up for a moment and comes back with your list.",
+            "The first time it runs, your iPhone may ask whether “AMS Persistent Reminder Helper” may open Persistent. Answer Allow, or Always Allow.",
             "Your list is kept on the iPhone. After you make new shortcuts, press “Load again” at the bottom of the list page, or in Settings › Shortcuts › Your shortcuts. It runs the helper shortcut, the Shortcuts app flashes up for a moment, and it comes back with the new list. The helper itself does not show up in the list.",
         ]),
         Part(title: "Speaking a new reminder", text: [
@@ -147,6 +147,11 @@ enum Guide {
     ]
 
     static let news: [Release] = [
+        Release(version: "0.5.2", date: "20 Nov 2026", items: [
+            "Changed: the helper shortcut that reads your shortcut names for the “Pick” list is renamed. It was “AMS Reminder List”, now it is “AMS Persistent Reminder Helper”, so its name says which app it belongs to. The app runs it under the new name, and the file offered in “1. Add the helper” is the renamed one.",
+            "Good to know: the new helper is already in the Shortcuts app on your Mac and comes over to your iPhone by itself. The old “AMS Reminder List” is not shown in the list any more and you can delete it in the Shortcuts app. Names you already loaded stay.",
+            "Good to know: the first time, your iPhone may ask again whether the helper may open Persistent. Answer Allow.",
+        ]),
         Release(version: "0.5.1", date: "20 Nov 2026", items: [
             "Changed: the name under the icon is now “Persistent” (was “AMS Reminder”). Type “persistent” in the iPhone search and the app shows up.",
             "Good to know: the iPhone search only matches the start of a word, so searching for “AMS” or “reminder” no longer finds the app.",

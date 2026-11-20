@@ -487,12 +487,14 @@ public struct Sections: Equatable, Sendable {
     public var isEmpty: Bool { waiting.isEmpty && today.isEmpty && tomorrow.isEmpty && later.isEmpty && atPlace.isEmpty }
 }
 
-/// The names of his shortcuts, sent back by the helper shortcut "AMS Reminder List".
+/// The names of his shortcuts, sent back by the helper shortcut "AMS Persistent Reminder Helper" (0.5.2; was "AMS Reminder List").
 public enum ShortcutNames {
-    public static let helperName = "AMS Reminder List"
+    public static let helperName = "AMS Persistent Reminder Helper"
+    /// Earlier names of the helper: never shown in the list either.
+    public static let oldHelperNames: Set<String> = ["AMS Reminder List"]
     public static let scheme = "amsreminder"
 
-    /// Reads amsreminder://shortcuts?names=<one per line>: A–Z, no doubles, no empty ones, without the helper.
+    /// Reads amsreminder://shortcuts?names=<one per line>: A–Z, no doubles, no empty ones, without the helper (old names too).
     /// Nil when the link is not that one.
     public static func read(_ url: URL) -> [String]? {
         guard url.scheme == scheme, url.host == "shortcuts",
@@ -505,7 +507,7 @@ public enum ShortcutNames {
         var seen = Set<String>()
         return names
             .compactMap(Reminder.cleanShortcut)
-            .filter { $0 != helperName && seen.insert($0).inserted }
+            .filter { $0 != helperName && !oldHelperNames.contains($0) && seen.insert($0).inserted }
             .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
 
