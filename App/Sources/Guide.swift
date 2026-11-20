@@ -18,8 +18,9 @@ enum Guide {
 
     static let guide: [Part] = [
         Part(title: "What this app is", text: [
-            "AMS Reminder is for the things you must not forget. A normal reminder tells you once and is gone. This one keeps nudging you, again and again, until you tick it off.",
+            "Persistent Reminders is for the things you must not forget. A normal reminder tells you once and is gone. This one keeps nudging you, again and again, until you tick it off.",
             "It is made for the iPhone, held upright. Your list lives on your iPhone, and a copy is kept safe in your iCloud.",
+            "To find the app, type “persistent” in the iPhone search. The name under the icon is “Persistent”.",
         ]),
         Part(title: "The Reminders screen", text: [
             "The big orange title says Persistent Reminders. The tab at the bottom still says Reminders.",
@@ -67,7 +68,7 @@ enum Guide {
         Part(title: "Running a shortcut", text: [
             "Every reminder can hold the name of one Apple Shortcut. Example: you have a shortcut that calls Andreas Bjurling. Make a reminder “Call Andreas”, and in the Shortcut field type its name: Call Andreas Bjurling.",
             "The name must be the same as in the Shortcuts app, with the same capitals and the same spaces. If it is not, the Shortcuts app says it cannot find it. Press “Try it” once to check.",
-            "When the reminder nudges you, press and hold the message and press “Run: Call Andreas Bjurling”. AMS Reminder opens for a moment and hands over to the Shortcuts app, which runs the shortcut. Here it starts the phone call.",
+            "When the reminder nudges you, press and hold the message and press “Run: Call Andreas Bjurling”. Persistent opens for a moment and hands over to the Shortcuts app, which runs the shortcut. Here it starts the phone call.",
             "Or open the app and press and hold the row on the Reminders screen. You feel a short buzz, and the shortcut runs.",
             "“Tick off when it runs” is a switch on the edit screen, under the Shortcut field. It is on at first, also for reminders that already had a shortcut. While it is on, running the shortcut ticks the reminder off at the same moment, with the short happy buzz. It goes to Done (where “Bring back” undoes it), a repeating one moves on to its next time, and the nudges stop.",
             "Switch it off if you want the reminder to stay. Then the shortcut runs and the reminder keeps nudging you until you tick it off yourself, for example after the call.",
@@ -76,7 +77,7 @@ enum Guide {
             "You can type the name of a shortcut, or pick it from a list. Next to the Shortcut field is a purple “Pick” button. It opens “Your shortcuts”: the names of all your shortcuts, with a search field at the top. Tap one and it goes into the field.",
             "An iPhone app cannot look at your shortcuts by itself. So a small helper shortcut called “AMS Reminder List” does it for the app. You set it up once.",
             "The first time, the list page says so and shows two steps. Step 1, “Add the helper”: the iPhone's share list opens. Choose Shortcuts in it, then press “Add Shortcut”. If “AMS Reminder List” is already in your Shortcuts app (it comes over by itself from your Mac), skip this step. Step 2, “Load my shortcuts”: it runs the helper. The Shortcuts app flashes up for a moment and comes back with your list.",
-            "The first time it runs, your iPhone may ask whether “AMS Reminder List” may open AMS Reminder. Answer Allow, or Always Allow.",
+            "The first time it runs, your iPhone may ask whether “AMS Reminder List” may open Persistent. Answer Allow, or Always Allow.",
             "Your list is kept on the iPhone. After you make new shortcuts, press “Load again” at the bottom of the list page, or in Settings › Shortcuts › Your shortcuts. It runs the helper shortcut, the Shortcuts app flashes up for a moment, and it comes back with the new list. The helper itself does not show up in the list.",
         ]),
         Part(title: "Speaking a new reminder", text: [
@@ -146,6 +147,10 @@ enum Guide {
     ]
 
     static let news: [Release] = [
+        Release(version: "0.5.1", date: "20 Nov 2026", items: [
+            "Changed: the name under the icon is now “Persistent” (was “AMS Reminder”). Type “persistent” in the iPhone search and the app shows up.",
+            "Good to know: the iPhone search only matches the start of a word, so searching for “AMS” or “reminder” no longer finds the app.",
+        ]),
         Release(version: "0.5", date: "19 Nov 2026", items: [
             "New: speak a new reminder. Press and hold the round orange plus and say it, for example “Call Andreas tomorrow at 3”. Let go and the New reminder page opens, filled in with your words and the time. A short tap on the plus still opens an empty page. A small caption “Hold to speak” sits beside the plus.",
             "New: it understands at 3, at 3 pm, at 15:30, half past 4, in 20 minutes, in 2 hours, tomorrow, tonight or this evening (19:00), tomorrow morning (08:00) and the names of the weekdays. If nothing was heard it says “I didn’t catch that”.",

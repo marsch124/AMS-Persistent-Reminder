@@ -43,7 +43,7 @@ struct SafetySettingsSection: View {
             Text("A copy is a file you keep in Files or send yourself. Bringing one back keeps your current list as a safety copy first.")
         }
         .fileExporter(isPresented: $exporting, document: CopyDocument(data: (try? JSONEncoder.reminders.encode(store.list)) ?? Data()),
-                      contentType: .json, defaultFilename: "AMS Reminder copy \(Self.fileDay())") { _ in }
+                      contentType: .json, defaultFilename: "Persistent Reminders copy \(Self.fileDay())") { _ in }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in readFile(result) }
         .confirmationDialog(cloudQuestion, isPresented: Binding(get: { pendingCloud != nil }, set: { if !$0 { pendingCloud = nil } }), titleVisibility: .visible) {
             Button("Replace my list") {

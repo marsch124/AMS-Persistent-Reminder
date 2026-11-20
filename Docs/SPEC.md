@@ -1,6 +1,6 @@
 # AMS Persistent Reminder: specification (0.5)
 
-Name under the icon: AMS Reminder. Bundle id: com.schabbauer.AMSPersistentReminder. iPhone only, portrait, iOS 17+. Positive, calm, Apple look; Apple's standard text sizes; compact rows.
+Name under the icon: Persistent (0.5.1; so that typing "persistent" in iPhone search finds it, as search matches only the start of a word; "AMS" or "reminder" no longer find it). Bundle id: com.schabbauer.AMSPersistentReminder. iPhone only, portrait, iOS 17+. Positive, calm, Apple look; Apple's standard text sizes; compact rows.
 
 ## 1. Idea
 A reminder keeps nudging every N minutes from its due time until it is ticked off. All rules live in `Core/Sources/ReminderCore/Reminders.swift` and are tested with `swift test --package-path Core`.
@@ -88,7 +88,7 @@ Two tabs with large hand-drawn icons: Reminders (orange bell) and Settings (purp
 ### 6a. Running a shortcut
 - The name must match the shortcut's name in the Shortcuts app exactly (same capitals and spaces), e.g. "Call Andreas Bjurling". If it does not, the Shortcuts app says it cannot find it.
 - Handover: the app opens the link `shortcuts://run-shortcut?name=<percent-encoded name>`. The Shortcuts app runs it; no result is waited for.
-- From the nudge: the Run action has the option "open the app" (foreground), so pressing it opens AMS Reminder for a moment, which then makes the handover. With tickWhenRun on, the reminder is ticked off at the same moment (the handover still happens); with it off it stays on the list and keeps nudging until ticked off.
+- From the nudge: the Run action has the option "open the app" (foreground), so pressing it opens the app for a moment, which then makes the handover. With tickWhenRun on, the reminder is ticked off at the same moment (the handover still happens); with it off it stays on the list and keeps nudging until ticked off.
 - Notification categories: `nudge` (Done, In 10 minutes, In 1 hour, This evening) and `nudge-late` (the same with Tomorrow morning) for reminders without a shortcut. A reminder with a shortcut gets its own pair, `nudge-sc-<uuid>` and `nudge-late-sc-<uuid>` (uuid = the reminder id), whose first action is "Run: <name>" (opens the app); the other four actions are as before. The categories are registered together before nudges are planned and are rebuilt whenever the list changes; each planned nudge carries the category of its reminder.
 - From the row: a long press of 0.5 s on a row with a shortcut gives a short haptic buzz and makes the same handover and, with tickWhenRun on, ticks the reminder off with the happy buzz. A tap still opens the reminder; swipes are unchanged.
 - From the edit screen: "Try it" makes the same handover and never ticks.

@@ -1,6 +1,6 @@
 # AMS Persistent Reminder
 
-An iPhone app (iOS 17+, portrait only) for reminders that keep nudging you until you tick them off, in the spirit of the Due app. Calm, positive, Apple look. Name under the icon: "AMS Reminder". Bundle id: `com.schabbauer.AMSPersistentReminder`. Data stays on the iPhone.
+An iPhone app (iOS 17+, portrait only) for reminders that keep nudging you until you tick them off, in the spirit of the Due app. Calm, positive, Apple look. Name under the icon: "Persistent". Bundle id: `com.schabbauer.AMSPersistentReminder`. Data stays on the iPhone.
 
 ## How it is built
 
