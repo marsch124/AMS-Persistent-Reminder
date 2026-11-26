@@ -1,0 +1,649 @@
+<meta charset="utf-8">
+<title>Persistent Reminder Tour</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Persistent Reminder Tour: chapter rail on the left, coach card + a pretend iPhone on the right. Same engine as the other AMS tours.
+   Written for AMS Persistent Reminder 0.5.2. Update this tour in the release that changes a taught screen.
+   Every pretend-screen class starts with pr- so it can never clash with the engine's own classes. */
+:root {
+  --bg: #F6F4F2; --panel: #FFFFFF; --fg: #26201D; --muted: #6C625C; --line: #E8E1DC;
+  --accent: #B93E1B; --accent-soft: #FCE9E2; --good: #1E7A49; --good-soft: #E3F4E9; --warn: #B4400F;
+  --logo: #E8603A; --mainb: #C94A26; --shadow: 0 18px 40px rgba(38,32,29,.2);
+  --pbg:#F2F2F7; --pcard:#FFFFFF; --pfg:#1C1C1E; --pmuted:#6E6E73; --pline:#E3E3E8; --pfield:rgba(120,120,128,.14);
+  --or:#E8603A; --orf:#E8603A; --bl:#2F7CF6; --pu:#7C4DEB; --gr:#24985D; --wait:#FFF2EC; --teal:#14808A; --red:#D8343A;
+  --f-display: "Avenir Next", "Helvetica Neue", system-ui, sans-serif;
+  --f-body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --f-phone: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg:#171210; --panel:#221B18; --fg:#F2ECE8; --muted:#B0A39B; --line:#382D28;
+  --accent:#FF9E80; --accent-soft:#3A241B; --good:#7FDCA4; --good-soft:#16301F; --warn:#FFB38A; --shadow: 0 18px 40px rgba(0,0,0,.55);
+  --pbg:#000000; --pcard:#1C1C1E; --pfg:#F2F2F7; --pmuted:#98989F; --pline:#38383A; --pfield:rgba(120,120,128,.3);
+  --or:#FF8A65; --bl:#5A9BFF; --pu:#A78BFA; --gr:#4ADE80; --wait:#3A2620; --teal:#5CCCCC; --red:#FF6B6B;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg:#171210; --panel:#221B18; --fg:#F2ECE8; --muted:#B0A39B; --line:#382D28;
+  --accent:#FF9E80; --accent-soft:#3A241B; --good:#7FDCA4; --good-soft:#16301F; --warn:#FFB38A; --shadow: 0 18px 40px rgba(0,0,0,.55);
+  --pbg:#000000; --pcard:#1C1C1E; --pfg:#F2F2F7; --pmuted:#98989F; --pline:#38383A; --pfield:rgba(120,120,128,.3);
+  --or:#FF8A65; --bl:#5A9BFF; --pu:#A78BFA; --gr:#4ADE80; --wait:#3A2620; --teal:#5CCCCC; --red:#FF6B6B;
+  color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; line-height: 1.45; margin: 0 }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; grid-template-columns: 230px minmax(0,1fr); gap: 22px; }
+svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none }
+svg.g { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none }
+
+/* Rail */
+.rail { display: flex; flex-direction: column; gap: 4px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); align-self: start; }
+.brand { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.brand h1 { font-family: var(--f-display); font-size: 19px; line-height: 1.1; margin: 0; text-wrap: balance }
+.brand small { color: var(--muted); font-size: 12px }
+.logo { width: 40px; height: 40px; border-radius: 10px; background: var(--logo); color: #fff; display: grid; place-items: center; flex: none }
+.chap { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 9px; border: 0; background: none; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.chap:hover { background: var(--accent-soft) }
+.chap:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.chap .n { color: var(--muted); font-size: 12px; margin-left: auto; font-variant-numeric: tabular-nums; white-space: nowrap }
+.chap.cur { background: var(--accent-soft); color: var(--accent); font-weight: 600 }
+.chap.done .n { color: var(--good) }
+.bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin: 10px 2px 2px }
+.bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .4s }
+.railnote { color: var(--muted); font-size: 12px; margin: 4px 2px }
+
+/* Coach */
+.coach { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px 16px; align-items: center; }
+.coach .eyebrow { grid-column: 1 / -1; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); font-weight: 600; display: flex; gap: 8px; align-items: center }
+.coach .eyebrow .kind { color: var(--muted); font-weight: 500 }
+.coach h2 { font-family: var(--f-display); font-size: 23px; line-height: 1.2; margin: 0; text-wrap: balance }
+.coach p { margin: 4px 0 0; color: var(--fg); max-width: 66ch }
+.coach .btns { display: flex; gap: 8px; align-items: center }
+.btn { font: inherit; font-weight: 600; border-radius: 9px; padding: 8px 16px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); cursor: pointer }
+.btn.main-b { background: var(--mainb); border-color: var(--mainb); color: #fff }
+.btn.main-b:disabled { opacity: .45; cursor: default }
+.btn.ghost { border-color: transparent; color: var(--muted) }
+.answers { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px }
+.ans { font: inherit; padding: 8px 14px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--panel); color: var(--fg); cursor: pointer; text-align: left }
+.ans:hover { border-color: var(--accent) }
+.ans.right { border-color: var(--good); background: var(--good-soft); color: var(--good); font-weight: 600 }
+.ans.wrong { border-color: var(--warn); color: var(--warn); text-decoration: line-through }
+.feedback { grid-column: 1 / -1; font-weight: 600; color: var(--good); min-height: 1.4em; margin: 0 }
+.feedback.no { color: var(--warn) }
+
+.target { z-index: 2; animation: ring 1.6s ease-in-out infinite; border-radius: 9px }
+@keyframes ring { 0%,100% { box-shadow: 0 0 0 2px #E6B53F, 0 0 0 6px rgba(230,181,63,.35) } 50% { box-shadow: 0 0 0 2px #E6B53F, 0 0 0 11px rgba(230,181,63,0) } }
+
+/* Finish */
+.finish { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px }
+.finish h3 { font-family: var(--f-display); margin: 0 0 8px; font-size: 19px }
+.finish label { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-top: 1px solid var(--line); cursor: pointer }
+.finish input { width: 18px; height: 18px; accent-color: var(--mainb); margin-top: 2px; flex: none }
+.topnote { margin: 0; padding: 8px 12px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 13.5px }
+@media (max-width: 820px) {
+  .wrap { grid-template-columns: minmax(0,1fr) }
+  .rail { position: static; flex-direction: row; flex-wrap: wrap; gap: 4px }
+  .brand { width: 100% }
+  .chap .n { display: none }
+  .railnote, .bar { width: 100% }
+  .coach { grid-template-columns: minmax(0,1fr) }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important } }
+
+.main { display: grid; grid-template-columns: minmax(0,1fr); gap: 14px; min-width: 0; align-content: start }
+
+/* Stage = pretend iPhone, 390 x 760, scaled to fit */
+.stagebox { position: relative; width: min(100%, 390px); aspect-ratio: 390 / 760; border-radius: 40px; overflow: hidden; box-shadow: 0 0 0 6px #1f1f23, var(--shadow); justify-self: center; background: var(--pbg) }
+.stage { position: absolute; left: 0; top: 0; width: 390px; height: 760px; transform-origin: 0 0; font-family: var(--f-phone); font-size: 15px; line-height: 1.3; color: var(--pfg); background: var(--pbg); overflow: hidden; -webkit-user-select: none; user-select: none }
+:where(.stage button) { font: inherit; color: inherit }
+:where(.stage input) { font: inherit; color: var(--pfg); -webkit-user-select: text; user-select: text }
+.pr-sbar { height: 34px; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 26px 4px; font-weight: 600; font-size: 14px }
+.pr-scr { position: absolute; left: 0; right: 0; top: 34px; bottom: 56px; overflow-y: auto; padding: 0 14px 160px; scrollbar-width: none }
+.pr-scr::-webkit-scrollbar { display: none }
+.pr-h1 { font-size: 28px; font-weight: 700; margin: 6px 4px 8px; line-height: 1.1 }
+.pr-gh { font-size: 13px; font-weight: 600; margin: 12px 6px 4px; letter-spacing: .01em }
+.pr-card { background: var(--pcard); border-radius: 14px; overflow: hidden }
+.pr-rowwrap { position: relative; border-top: 1px solid var(--pline); overflow: hidden }
+.pr-rowwrap:first-child { border-top: 0 }
+.pr-row { position: relative; display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--pcard); cursor: pointer; transition: transform .2s; min-height: 54px; z-index: 1 }
+.pr-row.wait { background: var(--wait) }
+.pr-row.col { box-shadow: inset 3px 0 0 var(--rc); }
+.pr-row.sl { transform: translateX(-192px) } .pr-row.sr { transform: translateX(128px) }
+.pr-mid { flex: 1; min-width: 0 } .pr-t { font-weight: 500; font-size: 15.5px } .pr-n { font-size: 12.5px; color: var(--pmuted) }
+.pr-g { display: flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--pmuted) }
+.pr-row.wait .pr-g { color: var(--or) }
+.pr-time { text-align: right; font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--pmuted); background: none; border: 0; padding: 2px 0 2px 6px; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; cursor: pointer }
+.pr-acts { position: absolute; top: 0; bottom: 0; display: flex; z-index: 0 }
+.pr-acts.r { right: 0 } .pr-acts.l { left: 0 }
+.pr-ab { width: 64px; border: 0; color: #fff; font-weight: 600; font-size: 14px; cursor: pointer }
+.pr-hint { position: absolute; right: 10px; top: 5px; z-index: 3; border: 1.5px dashed var(--pmuted); border-radius: 8px; background: var(--pcard); font-size: 11px; padding: 1px 7px; color: var(--pmuted); cursor: pointer }
+.pr-bottom { position: absolute; left: 0; right: 0; bottom: 56px; padding: 6px 14px 8px; background: linear-gradient(to top, var(--pbg) 78%, transparent); display: flex; flex-direction: column; gap: 8px; z-index: 5 }
+.pr-plus { width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--orf); color: #fff; display: grid; place-items: center; box-shadow: 0 2px 5px rgba(0,0,0,.2); cursor: pointer; flex: none }
+.pr-ringb { width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--pcard); display: grid; place-items: center; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,.15); cursor: pointer; flex: none }
+.pr-ringb b { position: absolute; color: var(--gr); font-size: 14px }
+.pr-bl { display: flex; align-items: center; gap: 10px }
+.pr-cap { font-size: 12.5px; color: var(--pmuted); flex: 1 }
+.pr-undo { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; background: var(--pcard); box-shadow: 0 2px 8px rgba(0,0,0,.18); font-size: 13.5px }
+.pr-undo span { flex: 1 } .pr-undo button { border: 0; background: none; color: var(--bl); font-weight: 700; cursor: pointer; padding: 4px 6px }
+.pr-tabs { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; background: var(--pcard); border-top: 1px solid var(--pline); display: flex; z-index: 6 }
+.pr-tab { flex: 1; border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 11px; font-weight: 500; color: var(--pmuted); cursor: pointer }
+.pr-tab.on.a { color: var(--or) } .pr-tab.on.b { color: var(--pu) }
+.pr-paused { display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: var(--pcard); border-radius: 14px; margin-bottom: 8px; font-size: 13.5px }
+.pr-paused span { flex: 1 }
+.pr-sm { border: 0; border-radius: 14px; background: var(--pu); color: #fff; font-weight: 600; font-size: 13px; padding: 4px 11px; cursor: pointer }
+.pr-practice { position: absolute; left: 10px; right: 10px; top: 36px; z-index: 9; background: rgba(255,214,102,.95); color: #3b2c00; border-radius: 10px; padding: 5px 8px; display: flex; gap: 8px; align-items: center; font-size: 12px }
+.pr-practice button { border: 1.5px dashed #3b2c00; background: #fff6d6; border-radius: 8px; font-weight: 600; padding: 3px 9px; font-size: 12px; cursor: pointer; color: #3b2c00 }
+/* edit page */
+.pr-nav { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; font-size: 16px }
+.pr-nav b { font-weight: 700; color: var(--bl) }
+.pr-cancel { border: 0; background: none; color: var(--bl); cursor: pointer; font-size: 16px; padding: 4px }
+.pr-save { border: 0; border-radius: 16px; background: var(--bl); color: #fff; font-weight: 700; font-size: 15px; padding: 5px 16px; cursor: pointer }
+.pr-field { background: var(--pcard); border-radius: 12px; padding: 11px 14px; font-size: 17px; font-weight: 500; width: 100%; border: 0; outline: 0; display: block }
+.pr-hd { font-size: 13px; font-weight: 700; margin: 13px 4px 5px }
+.pr-chips { display: flex; flex-wrap: wrap; gap: 6px }
+.pr-chip { border: 0; border-radius: 15px; padding: 6px 12px; font-size: 14px; background: color-mix(in srgb, var(--cc, var(--bl)) 14%, transparent); color: var(--cc, var(--bl)); cursor: pointer; font-weight: 500 }
+.pr-chip.on { background: var(--cc, var(--bl)); color: #fff }
+.pr-sw { position: relative; width: 44px; height: 26px; border-radius: 13px; border: 0; background: rgba(120,120,128,.35); cursor: pointer; flex: none }
+.pr-sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left .15s }
+.pr-sw.on { background: var(--gr) } .pr-sw.on::after { left: 20px }
+.pr-swrow { display: flex; align-items: center; gap: 10px; background: var(--pcard); border-radius: 12px; padding: 9px 12px; margin-top: 6px; font-size: 14.5px }
+.pr-swrow span { flex: 1 } .pr-small { font-size: 12px; color: var(--pmuted); margin: 3px 6px 0 }
+.pr-dots { display: flex; gap: 9px; flex-wrap: wrap; align-items: center }
+.pr-dot { width: 26px; height: 26px; border-radius: 50%; border: 0; background: var(--dc); cursor: pointer; position: relative; display: grid; place-items: center; color: var(--pmuted) }
+.pr-dot.on { box-shadow: 0 0 0 2px var(--pcard), 0 0 0 4px var(--dc) }
+.pr-days { display: flex; gap: 5px; margin-top: 7px }
+.pr-day { width: 36px; height: 34px; border: 0; border-radius: 17px; background: color-mix(in srgb, var(--bl) 14%, transparent); color: var(--bl); font-weight: 600; cursor: pointer }
+.pr-day.on { background: var(--bl); color: #fff }
+.pr-hours { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 5px }
+.pr-hours span { text-align: center; font-size: 12px; padding: 4px 0; border-radius: 8px; background: var(--pcard) } .pr-hours span.on { background: var(--bl); color: #fff }
+.pr-heard { font-size: 12.5px; color: var(--bl); margin: 0 4px 6px; font-style: italic }
+.pr-pick { border: 0; border-radius: 14px; background: var(--pu); color: #fff; font-weight: 600; font-size: 13px; padding: 4px 12px; cursor: pointer }
+.pr-set { display: flex; align-items: center; gap: 10px; background: var(--pcard); padding: 11px 12px; border-top: 1px solid var(--pline); font-size: 15px; cursor: pointer; border-left: 0; border-right: 0; border-bottom: 0; width: 100%; text-align: left }
+.pr-set:first-child { border-top: 0 } .pr-set .sp { flex: 1 } .pr-set .v { color: var(--pmuted) }
+.pr-st { font-size: 13px; font-weight: 700; margin: 14px 6px 4px }
+.pr-pg { padding: 4px 4px 0 } .pr-pg h3 { margin: 12px 0 3px; font-size: 13px; color: var(--bl) } .pr-pg p { margin: 2px 0; font-size: 13px }
+/* done page */
+.pr-hero { display: flex; gap: 14px; align-items: center; background: var(--pcard); border-radius: 14px; padding: 12px 14px }
+.pr-hero b { display: block; font-size: 17px; color: var(--gr) } .pr-hero span { font-size: 13px; color: var(--pmuted); white-space: pre-line }
+/* nudge card */
+.pr-lock { position: absolute; inset: 0; z-index: 20; background: linear-gradient(160deg, #3a4a7a, #7a4a6a); padding: 70px 14px 0; display: flex; flex-direction: column; align-items: center; gap: 8px }
+.pr-lock .clock { color: #fff; font-size: 62px; font-weight: 300; margin-bottom: 18px }
+.pr-notif { width: 100%; background: rgba(255,255,255,.88); color: #1c1c1e; border-radius: 18px; padding: 10px 12px; font-size: 14px; cursor: pointer }
+.pr-notif small { color: #55555a; display: flex; justify-content: space-between } .pr-notif b { display: block; font-size: 15px; margin: 2px 0 }
+.pr-nb { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap }
+.pr-nb button { flex: 1 1 45%; border: 0; border-radius: 10px; background: rgba(60,60,67,.14); padding: 7px 4px; font-weight: 600; font-size: 13.5px; cursor: pointer; color: #1c1c1e }
+.pr-nb button.d { background: var(--gr); color: #fff }
+.pr-menu { position: absolute; left: 14px; right: 14px; bottom: 70px; z-index: 12; background: var(--pcard); border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,.35); padding: 6px }
+.pr-menu b { display: block; font-size: 13px; padding: 6px 10px; color: var(--pmuted) }
+.pr-menu button { display: block; width: 100%; border: 0; background: none; text-align: left; padding: 10px; font-size: 16px; border-radius: 10px; cursor: pointer }
+.pr-menu button:hover { background: var(--pfield) }
+.pr-toast { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); background: #1c1c1e; color: #fff; padding: 7px 14px; border-radius: 20px; font-size: 13px; z-index: 30; white-space: nowrap; max-width: 92%; overflow: hidden; text-overflow: ellipsis }
+@media (min-width: 1020px) {
+  .main { grid-template-columns: minmax(0,1fr) 402px; align-items: start }
+  .topnote, .finish { grid-column: 1 / -1 }
+  .coach { grid-column: 1; grid-row: 2; grid-template-columns: minmax(0,1fr); position: sticky; top: 16px }
+  .stagebox { grid-column: 2; grid-row: 2 }
+}
+</style>
+
+<div class="wrap">
+  <nav class="rail" id="rail" aria-label="Chapters"></nav>
+  <main class="main">
+    <p class="topnote">Practice copy, nothing changes in your real app.</p>
+    <section class="coach" id="coach" aria-live="polite"></section>
+    <div class="stagebox" id="stagebox"><div class="stage" id="stage"></div></div>
+    <section class="finish" id="finish" hidden></section>
+  </main>
+</div>
+
+<script>
+/* ---------- Icons: simple hand-drawn line shapes, 24-pt grid, stroke 1.9, round ends, no fill. ---------- */
+const ICON = {
+  bell: 'M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15Z M10 20.5a2 2 0 0 0 4 0',
+  plus: 'M12 5v14M5 12h14', pulse: 'M3.5 12h4l2-5 4 10 2-5h5',
+  trophy: 'M7.5 3.5h9v5a4.5 4.5 0 0 1-9 0Z M7.5 5H4.5v1.5a3 3 0 0 0 3.3 3 M16.5 5h3v1.5a3 3 0 0 1-3.3 3 M12 13v3.5 M9.5 16.5h5l1 4h-7Z',
+  gear: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z M12 3v3 M12 18v3 M3 12h3 M18 12h3 M5.6 5.6l2.1 2.1 M16.3 16.3l2.1 2.1 M5.6 18.4l2.1-2.1 M16.3 7.7l2.1-2.1',
+  flag: 'M5 4v17 M5 5h12l-2 3.5 2 3.5H5', phone: 'M8 3.5h8a1.5 1.5 0 0 1 1.5 1.5v14a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 19V5A1.5 1.5 0 0 1 8 3.5Z M11 17.8h2',
+  pen: 'M4 20l4-1 10-10-3-3L5 16Z M13.5 6.5l3 3', check: 'M5 12.5l5 5 9-10.5', circle: 'M3.5 12a8.5 8.5 0 1 0 17 0 8.5 8.5 0 1 0-17 0',
+  pause: 'M9 6v12 M15 6v12', repeat: 'M4 12a8 8 0 0 1 13.5-5.8L20 8.5 M20 4v4.5h-4.5 M20 12a8 8 0 0 1-13.5 5.8L4 15.5 M4 20v-4.5h4.5',
+  map: 'M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10Z M12 8.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z',
+  cloud: 'M7 18a4 4 0 0 1-.5-7.97A5.5 5.5 0 0 1 17 9a4.5 4.5 0 0 1 .5 9Z', play: 'M8 5.5v13l11-6.5Z', skip: 'M6 6l8 6-8 6Z M18 6v12',
+  mic: 'M12 4a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3Z M6.5 11.5a5.5 5.5 0 0 0 11 0 M12 17v3',
+  star: 'M12 4l2.4 5 5.4.7-4 3.8 1 5.4L12 16.3 7.2 18.9l1-5.4-4-3.8 5.4-.7Z', ques: 'M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7 M12 17v.3',
+  list: 'M5 6h14 M5 12h14 M5 18h9'
+};
+const icon = (n, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${ICON[n]}"/></svg>`;
+const g = (n, px, col, sw) => `<svg class="g" width="${px}" height="${px}" viewBox="0 0 24 24" style="color:${col || 'currentColor'}${sw ? ';stroke-width:' + sw : ''}" aria-hidden="true"><path d="${ICON[n]}"/></svg>`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- The pretend app: made-up reminders only ---------- */
+const DOT = ' · ';
+const COLS = { Red: '#E5484D', Orange: '#F07C2A', Yellow: '#D9A400', Green: '#24985D', Teal: '#14808A', Blue: '#2F7CF6', Purple: '#7C4DEB', Pink: '#E0559A' };
+const baseRems = () => [
+  { id: 'pills', title: 'Take the blue pills', grey: 'Nudging every 5 min' + DOT + '3rd nudge', time: '08:00', grp: 'wait' },
+  { id: 'dentist', title: 'Call the dentist', grey: 'Nudge every 10 min', time: '14:30', grp: 'today' },
+  { id: 'plants', title: 'Water the plants', grey: '3 days after done', time: '18:00', grp: 'today', repeat: true, col: 'Green' },
+  { id: 'bill', title: 'Pay the water bill', grey: 'Nudge every 10 min', time: '09:00', grp: 'tomorrow' },
+  { id: 'car', title: 'Book the car service', grey: 'Nudge every 15 min', time: 'Fri 10:00', grp: 'later', note: 'Ask about the winter tyres' },
+  { id: 'milk', title: 'Buy milk', grey: 'When you arrive at the shop', time: '', grp: 'place', place: true },
+  { id: 'gym', title: 'Pack the gym bag', grey: 'Paused until tomorrow 08:00', time: '19:00', grp: 'later', paused: true }
+];
+const baseDone = () => [
+  { id: 'd1', title: 'Pick up the parcel', how: 'On time', time: '07:55' },
+  { id: 'd2', title: 'Send the invoice', how: 'After 3 nudges', time: '09:10' },
+  { id: 'd3', title: 'Feed the cat', how: 'On time', time: '07:40' }
+];
+const freshEdit = () => ({ title: '', quick: null, repeat: 'Never', days: [], colour: null, nudge: 5, afterDone: false, sound: 'iPhone', stopAt: false, note: '', tickRun: true, pauseOn: 'On', heard: '' });
+const START = () => ({ screen: 'list', tab: 'rem', rems: baseRems(), done: baseDone(), undo: null, toast: '', swipe: null, hint: null, menu: null, practice: null, lock: null,
+  edit: freshEdit(), pausedAll: null, quiet: true, louder: true, set: { later: [1, 3, 5] }, bring: false });
+let S = START();
+const set = o => { S = Object.assign(START(), o); };      // full reset, then what the step needs
+const timers = [];
+const later = (fn, ms) => { const h = setTimeout(fn, ms); timers.push(h); return h; };
+const clearTimers = () => { while (timers.length) clearTimeout(timers.pop()); };
+const scene = set;
+
+const TOUR_TITLE = 'Persistent Reminder Tour', TOUR_SUB = 'Learn the app in about 12 minutes', KEY = 'persistentreminder';
+const RAILNOTE = 'Practice copy, nothing changes in your real app. Written for AMS Persistent Reminder 0.5.2.';
+const FINAL_ICON = 'phone', FINAL_LABEL = 'Now on your iPhone', FINISH_TITLE = 'Now on your iPhone';
+const brandHTML = () => `<span class="logo">${icon('bell')}</span>`;
+
+/* ---------- Drawing the pretend screens ---------- */
+const GROUPS = [['wait', 'Waiting for you', 'var(--or)'], ['today', 'Today', 'var(--bl)'], ['tomorrow', 'Tomorrow', 'var(--pmuted)'], ['later', 'Later', 'var(--pmuted)'], ['place', 'At a place', 'var(--bl)']];
+const todayCounts = () => ({ done: S.done.filter(d => d.today !== false).length, toGo: S.rems.filter(r => r.grp === 'wait' || r.grp === 'today').length });
+function ringSvg(done, total, size, sw) {
+  const r = (size - sw) / 2, c = 2 * Math.PI * r, f = total ? done / total : 0;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg)"><circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="var(--pfield)" stroke-width="${sw}"/><circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="var(--gr)" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${c * f} ${c}"/></svg>`;
+}
+function rowHTML(r) {
+  const wait = r.grp === 'wait', sw = S.swipe && S.swipe.id === r.id ? S.swipe.dir : null, col = r.col && r.repeat ? COLS[r.col] : null;
+  const mark = r.paused ? `<span data-t="pause-mark" style="color:var(--pu)">${g('pause', 13, '', 2.4)}</span>` : r.place ? `<span data-t="map-mark" style="color:var(--bl)">${g('map', 13)}</span>` : r.repeat ? `<span data-t="repeat-mark" style="color:${col || 'var(--pmuted)'}">${g('repeat', 13)}</span>` : wait ? `<span style="color:var(--or)">${g('bell', 13)}</span>` : '';
+  const acts = sw === 'l'
+    ? `<div class="pr-acts r"><button class="pr-ab" style="background:var(--red)" data-act="del" data-id="${r.id}" data-t="act-delete">Delete</button><button class="pr-ab" style="background:var(--bl)" data-act="later-open" data-id="${r.id}" data-t="act-later">Later</button><button class="pr-ab" style="background:var(--pu)" data-act="pause-swipe" data-id="${r.id}" data-t="act-pause">Pause</button></div>`
+    : sw === 'r' ? `<div class="pr-acts l"><button class="pr-ab" style="background:var(--gr)" data-act="tick" data-id="${r.id}" data-t="act-done">Done</button>${r.repeat ? `<button class="pr-ab" style="background:#8E8E93" data-act="skip" data-id="${r.id}" data-t="act-skip">Skip</button>` : ''}</div>` : '';
+  const hint = S.hint && S.hint.id === r.id && !sw ? `<button class="pr-hint" data-act="swipe-${S.hint.dir}" data-id="${r.id}" data-t="swipe-${S.hint.dir}">${S.hint.dir === 'l' ? '◂ swipe left' : 'swipe right ▸'}</button>` : '';
+  return `<div class="pr-rowwrap" data-id="${r.id}" data-t="wrap-${r.id}">${acts}${hint}
+    <div class="pr-row ${wait ? 'wait' : ''} ${col ? 'col' : ''} ${sw === 'l' ? 'sl' : sw === 'r' ? 'sr' : ''}" style="${col ? '--rc:' + col : ''}" data-act="tick" data-id="${r.id}" data-t="row-${r.id}" data-sw="${r.id}">
+      <span data-t="circle-${r.id}" style="color:${wait ? 'var(--or)' : col || 'var(--pmuted)'}">${g('circle', 28, '', 1.7)}</span>
+      <div class="pr-mid"><div class="pr-t">${esc(r.title)}</div>${r.note ? `<div class="pr-n">${esc(r.note)}</div>` : ''}<div class="pr-g">${mark}<span data-t="grey-${r.id}">${esc(r.grey)}</span></div></div>
+      ${r.time ? `<button class="pr-time" data-act="edit-open" data-id="${r.id}" data-t="time-${r.id}"><span>${r.time}</span><span style="color:var(--pmuted)">${g('pen', 13)}</span></button>` : ''}
+    </div></div>`;
+}
+function pausedLine() {
+  if (!S.pausedAll) return '';
+  const w = { Tomorrow: 'until tomorrow 08:00', Weekend: 'for the weekend', Off: '' }[S.pausedAll];
+  return `<div class="pr-paused" data-t="paused-line"><span style="color:var(--pu)">${g('pause', 18, '', 2.4)}</span><span>${S.pausedAll === 'Off' ? 'Nudges are off.' : 'Nudges are paused ' + w + '.'}</span><button class="pr-sm" data-act="unpause" data-t="turn-on">Turn on</button></div>`;
+}
+function listHTML() {
+  const c = todayCounts();
+  const groups = GROUPS.map(([k, name, colr]) => { const rs = S.rems.filter(r => r.grp === k); return rs.length ? `<div class="pr-gh" style="color:${colr}" data-t="group-${k}">${name}</div><div class="pr-card">${rs.map(rowHTML).join('')}</div>` : ''; }).join('');
+  const empty = !S.rems.length ? `<div style="text-align:center;padding:40px 10px"><div style="color:var(--or)">${g('bell', 44)}</div><b style="font-size:19px">All clear</b><div class="pr-n">Nothing is waiting for you. Add a reminder and it will keep nudging you until it's done.</div></div>` : '';
+  const undo = S.undo ? `<div class="pr-undo" data-t="undo-bar"><span>Ticked off: ${esc(S.undo.title)}</span><button data-act="undo" data-t="undo-btn">Undo</button></div>` : '';
+  return `<div class="pr-scr" data-keep><div class="pr-h1" style="color:var(--or)" data-t="title">Persistent Reminders</div>${pausedLine()}${empty}${groups}</div>
+    <div class="pr-bottom">${undo}<div class="pr-bl"><button class="pr-plus" data-act="plus" data-hold data-t="plus" aria-label="New reminder">${g('plus', 26, '#fff', 2.6)}</button><span class="pr-cap" data-t="cap">Hold to speak</span>
+      <button class="pr-ringb" data-act="ring" data-t="ring" aria-label="Done">${ringSvg(c.done, c.done + c.toGo, 56, 4)}<b>${c.done}</b></button></div></div>`;
+}
+const chips = (items, cur, act, tp, colr) => `<div class="pr-chips" ${colr ? `style="--cc:${colr}"` : ''}>${items.map(x => `<button class="pr-chip ${x === cur ? 'on' : ''}" data-act="${act}" data-id="${x}" data-t="${tp}-${x}">${x}</button>`).join('')}</div>`;
+const swr = (key, label, on, small, tp) => `<div class="pr-swrow" data-t="row-${tp || key}"><span>${label}</span><button class="pr-sw ${on ? 'on' : ''}" role="switch" aria-checked="${on}" aria-label="${esc(label)}" data-act="sw" data-id="${key}" data-t="sw-${key}"></button></div>${small ? `<div class="pr-small">${small}</div>` : ''}`;
+function editHTML() {
+  const e = S.edit, ep = e.repeat;
+  const quick = [['q10', 'In 10 min'], ['q1h', 'In 1 hour'], ['qev', 'This evening'], ['qtm', 'Tomorrow 8:00']];
+  const hrs = Array.from({ length: 16 }, (_, i) => `<span class="${e.quick === 'qev' && i + 6 === 19 ? 'on' : ''}">${String(i + 6).padStart(2, '0')}</span>`).join('');
+  const dots = `<button class="pr-dot ${!e.colour ? 'on' : ''}" style="--dc:var(--pfield)" data-act="col" data-id="none" data-t="col-none" aria-label="no colour">${g('circle', 14, '', 1.6)}</button>` + Object.keys(COLS).map(n => `<button class="pr-dot ${e.colour === n ? 'on' : ''}" style="--dc:${COLS[n]}" data-act="col" data-id="${n}" data-t="col-${n}" aria-label="${n}"></button>`).join('');
+  return `<div class="pr-nav"><button class="pr-cancel" data-act="cancel" data-t="cancel">Cancel</button><b>${S.editId ? 'Change reminder' : 'New reminder'}</b><button class="pr-save" data-act="save" data-t="save">Save</button></div>
+  <div class="pr-scr" data-keep style="top:78px;padding-bottom:30px;bottom:0">
+    ${e.heard ? `<div class="pr-heard" data-t="heard">You said: “${esc(e.heard)}”</div>` : ''}
+    <input class="pr-field" data-in="title" data-t="title-field" placeholder="What should I remind you of?" value="${esc(e.title)}">
+    <div class="pr-hd" style="color:var(--bl)">When</div>
+    <div class="pr-chips" data-t="quick-row">${quick.map(([id, t]) => `<button class="pr-chip ${e.quick === id ? 'on' : ''}" data-act="quick" data-id="${id}" data-t="${id}">${t}</button>`).join('')}</div>
+    <div data-t="when-box"><div class="pr-chips" style="margin-top:8px"><button class="pr-chip on">Today</button><button class="pr-chip">Tomorrow</button><button class="pr-chip">Pick a day</button></div>
+    <div class="pr-hours">${hrs}</div><div class="pr-chips" style="margin-top:6px"><button class="pr-chip on">:00</button><button class="pr-chip">:15</button><button class="pr-chip">:30</button><button class="pr-chip">:45</button></div></div>
+    <div class="pr-hd" style="color:var(--bl)">Repeat</div>
+    ${chips(['Never', 'Daily', 'Weekly', 'Monthly', 'On days', 'Hours', 'Days'], ep, 'rep', 'rp')}
+    ${ep === 'On days' ? `<div class="pr-days" data-t="days">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => `<button class="pr-day ${e.days.includes(i) ? 'on' : ''}" data-act="day" data-id="${i}" data-t="wd-${i}">${d}</button>`).join('')}</div>
+      <div class="pr-chips" style="margin-top:7px"><button class="pr-chip" data-act="wdays" data-id="Weekdays" data-t="wd-Weekdays">Weekdays</button><button class="pr-chip" data-act="wdays" data-id="Weekend" data-t="wd-Weekend">Weekend</button></div>` : ''}
+    ${ep !== 'Never' ? swr('afterDone', 'Count from when I tick it off', e.afterDone, 'The next time is counted from the moment you did it.') + `<div class="pr-hd" style="color:var(--bl)">Colour</div><div class="pr-dots" data-t="dots">${dots}</div>` : ''}
+    <div class="pr-hd" style="color:var(--pu)">Nudge me every</div>
+    ${chips([1, 5, 10, 15, 30, 60].map(String), String(e.nudge), 'ne', 'ne', 'var(--pu)').replace(/>(\d+)</g, '>$1 min<')}
+    <div class="pr-hd" style="color:var(--pu)" data-t="sound-head">Sound</div>
+    ${chips(['iPhone', 'Chime', 'Bell', 'Marimba', 'Pop', 'Rise', 'Knock'], e.sound, 'snd', 'snd', 'var(--pu)')}
+    ${swr('stopAt', 'Stop nudging at', e.stopAt, e.stopAt ? 'On the day it is for, no nudges after 18:00. It stays on the list.' : '')}
+    <div class="pr-hd" style="color:var(--pu)">Shortcut</div>
+    <div class="pr-swrow" data-t="shortcut-row"><span style="color:var(--pmuted)">${g('play', 14, 'var(--pu)')} Name of a Shortcut</span><button class="pr-pick" data-act="pick" data-t="pick">Pick</button></div>
+    ${swr('tickRun', 'Tick off when it runs', e.tickRun, 'Press and hold the nudge or the row to run it.')}
+    <div class="pr-hd" style="color:var(--pu)">Pause nudges</div>
+    ${chips(['On', 'Tomorrow', 'Weekend', 'Pick a day'], e.pauseOn, 'pn', 'pn', 'var(--pu)')}
+    <div class="pr-hd" style="color:var(--bl)">Note</div><div class="pr-swrow" style="color:var(--pmuted)">A few extra words</div>
+  </div>`;
+}
+const tick = c => `<span style="color:${c}">${g('check', 22, c, 2.4)}</span>`;
+function doneHTML() {
+  const c = todayCounts(), total = c.done + c.toGo, head = c.done === 0 ? (c.toGo ? "Let's begin" : 'A free day') : c.toGo === 0 ? 'All done!' : 'Nice work!';
+  const sub = c.toGo === 0 ? 'Everything for today is ticked off.' : c.toGo === 1 ? `${c.done} of ${total} done today.\nOnly ${(S.rems.find(r => r.grp === 'wait' || r.grp === 'today') || {}).title} left.` : `${c.done} of ${total} done today.`;
+  const rows = S.done.map((d, i) => `<div class="pr-rowwrap"><div class="pr-row" style="cursor:default" data-t="drow-${d.id}"><span style="color:${d.skipped ? '#8E8E93' : 'var(--gr)'}">${g(d.skipped ? 'skip' : 'check', 26, '', 2)}</span><div class="pr-mid"><div class="pr-t">${esc(d.title)}</div><div class="pr-n">${d.how}</div></div><span class="pr-time" style="cursor:default">${d.time}</span>${i === 0 ? `<button class="pr-hint" style="top:4px;right:56px" data-act="bring" data-id="${d.id}" data-t="bring-btn">◂ swipe left: Bring back</button>` : ''}</div></div>`).join('');
+  return `<div class="pr-nav"><button class="pr-cancel" data-act="back" data-t="back">‹ Back</button><b style="color:var(--fg)">Done</b><span style="width:50px"></span></div>
+  <div class="pr-scr" data-keep style="top:78px;bottom:0"><div class="pr-hero" data-t="hero"><div style="position:relative;width:92px;height:92px;display:grid;place-items:center;flex:none">${ringSvg(c.done, total, 92, 10)}<b style="position:absolute;color:var(--fg);font-size:17px;display:block">${c.done}/${total}</b></div><div><b>${head}</b><span>${esc(sub)}</span></div></div>
+    <div class="pr-gh" style="color:var(--gr)">Today</div><div class="pr-card">${rows}</div>
+    <div class="pr-small" style="text-align:center;margin-top:10px">Ticked something by mistake? Swipe it left to bring it back.</div></div>`;
+}
+function settingsHTML() {
+  const sw = (k, on, t) => `<button class="pr-sw ${on ? 'on' : ''}" role="switch" aria-checked="${on}" data-act="sw" data-id="${k}" data-t="${t}"></button>`;
+  const later = ['5 min', '10 min', '15 min', '30 min', '1 hour', '2 hours', 'This evening'];
+  return `<div class="pr-scr" data-keep style="top:34px;padding-bottom:20px"><div class="pr-h1" style="color:var(--pu)" data-t="set-title">Settings</div>
+   <div class="pr-card"><button class="pr-set" data-act="ring" data-t="set-done"><span style="color:var(--gr)">${g('check', 20, '', 2.4)}</span><span class="sp">Done</span><span class="v">${todayCounts().done} today</span></button></div>
+   <div class="pr-small">Everything you ticked off, and a way to bring one back.</div>
+   <div class="pr-st" style="color:var(--pu)" data-t="nudges-head">Nudges</div>
+   <div class="pr-card"><div class="pr-set" style="cursor:default"><span class="sp">Nudge me every</span><span class="v">5 min</span></div>
+    <div class="pr-set" style="cursor:default;display:block" data-t="pause-all"><div style="margin-bottom:6px">Pause all nudges</div>${chips(['On', 'Tomorrow', 'Weekend', 'Pick a day', 'Off'], S.pausedAll || 'On', 'pa', 'pa', 'var(--pu)')}</div></div>
+   <div class="pr-small">New reminders start with this. You can change it, and pause it, on each reminder.</div>
+   <div class="pr-card" style="margin-top:8px"><div class="pr-set" style="cursor:default" data-t="louder-row"><span class="sp" style="font-size:14px">Nudge more often when I don't react</span>${sw('louder', S.louder, 'sw-louder')}</div>
+    <div class="pr-set" style="cursor:default" data-t="quiet-row"><span class="sp">Quiet hours<br><small class="v" style="font-size:12px">22:00 to 07:00</small></span>${sw('quiet', S.quiet, 'sw-quiet')}</div></div>
+   <div class="pr-st" style="color:var(--pu)">Later buttons on a nudge</div>
+   <div class="pr-card" style="padding:9px 12px" data-t="later-btns"><div class="pr-chips" style="--cc:var(--pu)">${later.map((t, i) => `<span class="pr-chip ${S.set.later.includes(i) ? 'on' : ''}">${t}</span>`).join('')}</div></div>
+   <div class="pr-st" style="color:var(--pu)">Shortcuts</div><div class="pr-card"><div class="pr-set" style="cursor:default" data-t="shortcuts-row"><span style="color:var(--pu)">${g('play', 16)}</span><span class="sp">Your shortcuts</span><span class="v">37 loaded</span></div></div>
+   <div class="pr-st" style="color:var(--teal)">Keep it safe</div><div class="pr-card"><div class="pr-set" style="cursor:default" data-t="cloud-row"><span style="color:var(--teal)">${g('cloud', 18)}</span><span class="sp">Keep a copy in iCloud</span><button class="pr-sw on" disabled></button></div></div>
+   <div class="pr-card" style="margin-top:12px"><button class="pr-set" data-act="guide" data-t="set-guide"><span style="color:var(--bl)">${g('ques', 22)}</span><span class="sp">How it works</span></button>
+    <button class="pr-set" data-act="news" data-t="set-news"><span style="color:var(--or)">${g('star', 22)}</span><span class="sp">What's new</span></button></div>
+   <div class="pr-small" style="text-align:center;margin-top:8px" data-t="version">AMS Persistent Reminder 0.5.2</div></div>`;
+}
+const GUIDE_PARTS = ['What this app is', 'The Reminders screen', 'One row', 'Making and changing a reminder', 'How the nudging works', 'Answering a nudge', 'Running a shortcut', 'Speaking a new reminder', 'Ticking off and repeating', 'Done', 'Signs in this app'];
+function pageHTML() {
+  const news = S.screen === 'news';
+  return `<div class="pr-nav"><button class="pr-cancel" data-act="back" data-t="back">‹ Settings</button><b style="color:var(--fg)">${news ? "What's new" : 'How it works'}</b><span style="width:60px"></span></div>
+  <div class="pr-scr" data-keep style="top:78px;bottom:0"><div class="pr-pg" data-t="page">${news ? `<h3 style="color:var(--or)">0.5.2 · 20 Nov 2026</h3><p>Changed: the helper shortcut for the “Pick” list is now called “AMS Persistent Reminder Helper”.</p><h3 style="color:var(--or)">0.5.1 · 20 Nov 2026</h3><p>Changed: the name under the icon is now “Persistent”.</p><h3 style="color:var(--or)">0.5 · 19 Nov 2026</h3><p>New: speak a new reminder, pause over the weekend, louder when ignored, quiet hours, skip this time …</p>` : GUIDE_PARTS.map(p => `<h3>${p}</h3>`).join('')}</div></div>`;
+}
+function tabBar() {
+  return `<div class="pr-tabs"><button class="pr-tab a ${S.tab === 'rem' ? 'on' : ''}" data-act="tab-rem" data-t="tab-rem">${g('bell', 24)}Reminders</button><button class="pr-tab b ${S.tab === 'set' ? 'on' : ''}" data-act="tab-set" data-t="tab-set">${g('gear', 24)}Settings</button></div>`;
+}
+const LATER_OPTS = [['l15', 'In 15 minutes', 'in 15 min'], ['l1h', 'In 1 hour', '09:20'], ['lton', 'Tonight 19:00', '19:00'], ['ltom', 'Tomorrow 08:00', 'Tomorrow 08:00']];
+function menuHTML() {
+  if (!S.menu) return '';
+  const items = S.menu.kind === 'later' ? LATER_OPTS.map(([id, t]) => `<button data-act="later-pick" data-id="${id}" data-t="${id}">${t}</button>`).join('')
+    : `<button data-act="noop" data-t="pz-tom">Until tomorrow 08:00</button><button data-act="noop">Weekend</button><button data-act="noop">Pick a day…</button>`;
+  return `<div class="pr-menu" data-t="menu"><b>${S.menu.kind === 'later' ? 'Later' : 'Pause'}</b>${items}</div>`;
+}
+function lockHTML() {
+  if (!S.lock) return '';
+  const l = S.lock;
+  return `<div class="pr-lock"><div class="clock">08:00</div>
+    <div class="pr-notif" data-hold data-t="nudge-card"><small><span>PERSISTENT</span><span>now</span></small><b>Take the blue pills</b>Since 08:00 · ${l.n}rd nudge
+    ${l.open ? `<div class="pr-nb"><button class="d" data-act="nudge-done" data-t="nb-done">Done</button><button data-act="nudge-later" data-t="nb-10">In 10 minutes</button><button data-act="nudge-later">In 1 hour</button><button data-act="nudge-later">This evening</button></div>` : ''}</div>
+    <p style="color:#fff;font-size:12.5px;text-align:center;opacity:.9">${l.open ? '' : 'Press and hold the message to see its buttons.'}</p></div>`;
+}
+function practiceHTML() {
+  if (!S.practice) return '';
+  return `<div class="pr-practice"><span>Practice:</span>${S.practice.includes('nudge') ? '<button data-act="p-nudge" data-t="p-nudge">08:00 arrives</button>' : ''}</div>`;
+}
+function renderStage() {
+  const st = document.getElementById('stage');
+  const scrolls = renderStage.scrolls = renderStage.scrolls || {};
+  st.querySelectorAll('[data-keep]').forEach(e => { scrolls[S.screen + S.tab] = e.scrollTop; });
+  const ae = document.activeElement, inId = ae && st.contains(ae) ? ae.dataset.in : null;
+  let body;
+  if (S.screen === 'edit') body = editHTML();
+  else if (S.screen === 'done') body = doneHTML();
+  else if (S.screen === 'guide' || S.screen === 'news') body = pageHTML();
+  else body = (S.tab === 'rem' ? listHTML() : settingsHTML()) + tabBar();
+  st.innerHTML = `<div class="pr-sbar"><span>9:41</span><span>●●●</span></div>${body}${S.screen === 'list' && S.tab === 'rem' ? practiceHTML() : ''}${menuHTML()}${lockHTML()}${S.toast ? `<div class="pr-toast">${esc(S.toast)}</div>` : ''}`;
+  st.querySelectorAll('[data-keep]').forEach(e => { e.scrollTop = scrolls[S.screen + S.tab] || 0; });
+  if (inId) { const nf = st.querySelector(`[data-in="${inId}"]`); if (nf) nf.focus(); }
+  markTarget();
+}
+function bringIntoView(el) {
+  const sc = el.closest('.pr-scr'); if (!sc) return;
+  const k = document.getElementById('stagebox').clientWidth / 390, r = el.getBoundingClientRect(), s = sc.getBoundingClientRect();
+  const low = S.screen === 'list' ? 150 : 20;
+  if (r.top < s.top + 10 * k || r.bottom > s.bottom - low * k) sc.scrollTop += (r.top - s.top - 120 * k) / k;
+}
+function fallbackTarget() {
+  if (S.lock) return 'nudge-card';
+  if (S.menu) return 'menu';
+  if (S.screen === 'edit') return 'cancel';
+  if (S.screen !== 'list') return 'back';
+  if (S.tab !== 'rem') return 'tab-rem';
+  return null;
+}
+let toastH = null;
+function toast(t) { S.toast = t; renderStage(); clearTimeout(toastH); toastH = setTimeout(() => { S.toast = ''; renderStage(); }, 2400); }
+
+/* ---------- Actions inside the pretend iPhone ---------- */
+const stage = document.getElementById('stage');
+let holdT = null, held = false, ptype = 'mouse', drag = null;
+const byId = id => S.rems.find(r => r.id === id);
+stage.addEventListener('pointerdown', ev => {
+  held = false; ptype = ev.pointerType; if (ev.button !== 0) return;
+  const el = ev.target.closest('[data-hold]');
+  if (el) holdT = setTimeout(() => { held = true; hold(el); }, 520);
+  const row = ev.target.closest('[data-sw]'); drag = row ? { id: row.dataset.sw, x: ev.clientX } : null;
+});
+['pointerleave', 'pointercancel'].forEach(n => stage.addEventListener(n, () => { clearTimeout(holdT); }));
+stage.addEventListener('pointerup', ev => {
+  clearTimeout(holdT);
+  if (drag) { const dx = ev.clientX - drag.x, k = document.getElementById('stagebox').clientWidth / 390;
+    if (Math.abs(dx) > 40 * k) { held = true; swipe(drag.id, dx < 0 ? 'l' : 'r'); } drag = null; }
+});
+stage.addEventListener('contextmenu', ev => { const el = ev.target.closest('[data-hold]'); if (!el) return; ev.preventDefault(); clearTimeout(holdT); held = ptype !== 'mouse'; hold(el); });
+function hold(el) {
+  if (el.dataset.t === 'plus') {
+    S.edit = Object.assign(freshEdit(), { title: 'Call the dentist', quick: 'qtm', heard: 'Call the dentist tomorrow at 3' }); S.editId = null; S.screen = 'edit'; renderStage(); emit('spoke');
+  } else if (el.dataset.t === 'nudge-card') { S.lock.open = true; renderStage(); emit('nudge-hold'); }
+}
+function swipe(id, dir) { S.swipe = { id, dir }; S.hint = null; S.menu = null; renderStage(); emit('swipe-' + dir, id); }
+stage.addEventListener('input', ev => {
+  const k = ev.target.dataset.in; if (!k) return;
+  if (k === 'title') { S.edit.title = ev.target.value; if (ev.target.value.trim()) emit('title-typed'); }
+});
+stage.addEventListener('keydown', ev => { if (ev.key === 'Enter' && ev.target.dataset && ev.target.dataset.in) ev.target.blur(); });
+stage.addEventListener('click', ev => {
+  if (held) { held = false; return; }
+  const el = ev.target.closest('[data-act]');
+  if (!el) { if (S.menu) { S.menu = null; renderStage(); } return; }
+  act(el.dataset.act, el.dataset.id, el);
+});
+function tickRem(id) {
+  const r = byId(id); if (!r) return;
+  S.done.unshift({ id: 'n' + id, title: r.title, how: r.grp === 'wait' ? 'After 3 nudges' : 'On time', time: '08:20' });
+  S.undo = { id, title: r.title, rem: r, at: S.rems.indexOf(r) };
+  if (r.repeat && r.id === 'plants') { r.grp = 'later'; r.time = 'Sun 18:00'; } else S.rems = S.rems.filter(x => x.id !== id);
+  S.swipe = null; S.hint = null; renderStage(); emit('tick', id);
+}
+function act(a, id, el) {
+  switch (a) {
+    case 'tick': if (S.swipe && S.swipe.id === id && S.swipe.dir === 'l') { S.swipe = null; renderStage(); break; } tickRem(id); break;
+    case 'undo': { const u = S.undo; if (!u) break; S.done = S.done.filter(d => d.id !== 'n' + u.id); const ex = byId(u.id); if (ex) Object.assign(ex, u.rem); else S.rems.splice(u.at, 0, u.rem); S.undo = null; renderStage(); emit('undo'); break; }
+    case 'swipe-l': swipe(id, 'l'); break;
+    case 'swipe-r': swipe(id, 'r'); break;
+    case 'del': S.rems = S.rems.filter(r => r.id !== id); S.swipe = null; renderStage(); break;
+    case 'later-open': S.menu = { kind: 'later', id }; renderStage(); emit('later-open'); break;
+    case 'pause-swipe': S.menu = { kind: 'pause', id }; renderStage(); break;
+    case 'later-pick': { const o = LATER_OPTS.find(x => x[0] === id), r = byId(S.menu.id); if (r && o) { r.time = o[2]; r.grp = id === 'ltom' ? 'tomorrow' : 'today'; r.grey = 'Nudge every 10 min'; } S.menu = null; S.swipe = null; renderStage(); emit('later', id); break; }
+    case 'skip': { const r = byId(id); if (r) { S.done.unshift({ id: 'k' + id, title: r.title, how: 'Skipped', time: '08:21', skipped: true, today: false }); r.time = 'Sun 18:00'; r.grp = 'later'; } S.swipe = null; renderStage(); emit('skip'); break; }
+    case 'plus': S.edit = freshEdit(); S.editId = null; S.screen = 'edit'; renderStage(); emit('edit-open'); break;
+    case 'edit-open': { const r = byId(id); S.edit = Object.assign(freshEdit(), { title: r ? r.title : '' }); S.editId = id; S.screen = 'edit'; renderStage(); emit('edit-open'); break; }
+    case 'cancel': S.screen = 'list'; renderStage(); emit('cancel'); break;
+    case 'save': { const e = S.edit; const t = e.title.trim() || 'New reminder'; const when = { q10: ['08:30', 'today'], q1h: ['09:20', 'today'], qev: ['19:00', 'today'], qtm: ['08:00', 'tomorrow'] }[e.quick] || ['08:30', 'today'];
+      const rep = e.repeat !== 'Never' ? (e.repeat === 'On days' ? 'Every weekday' : e.repeat === 'Daily' ? 'Every day' : 'Every ' + e.repeat.toLowerCase().replace(/ly$/, '')) : 'Nudge every ' + e.nudge + ' min';
+      if (S.editId) { const r = byId(S.editId); if (r) r.title = t; } else S.rems.push({ id: 'new' + S.rems.length, title: t, grey: rep, time: when[0], grp: when[1], repeat: e.repeat !== 'Never', col: e.colour });
+      const nid = 'new' + (S.rems.length - 1); S.screen = 'list'; S.saved = { title: t, quick: e.quick, repeat: e.repeat, colour: e.colour }; renderStage(); emit('save', S.saved); break; }
+    case 'quick': S.edit.quick = id; renderStage(); emit('quick', id); break;
+    case 'rep': S.edit.repeat = id; renderStage(); emit('repeat', id); break;
+    case 'day': { const i = +id, d = S.edit.days; S.edit.days = d.includes(i) ? d.filter(x => x !== i) : d.concat(i); renderStage(); emit('day', i); break; }
+    case 'wdays': S.edit.days = id === 'Weekdays' ? [0, 1, 2, 3, 4] : [5, 6]; renderStage(); emit('wdays', id); break;
+    case 'col': S.edit.colour = id === 'none' ? null : id; renderStage(); emit('colour', id); break;
+    case 'ne': S.edit.nudge = +id; renderStage(); emit('nudge-every', +id); break;
+    case 'snd': S.edit.sound = id; renderStage(); emit('sound', id); break;
+    case 'pn': S.edit.pauseOn = id; renderStage(); emit('pause-on', id); break;
+    case 'pick': toast('Practice copy: the list of your shortcuts opens here.'); break;
+    case 'sw': {
+      if (id === 'afterDone') { S.edit.afterDone = !S.edit.afterDone; renderStage(); emit('sw', { k: id, on: S.edit.afterDone }); }
+      else if (id === 'stopAt') { S.edit.stopAt = !S.edit.stopAt; renderStage(); emit('sw', { k: id, on: S.edit.stopAt }); }
+      else if (id === 'tickRun') { S.edit.tickRun = !S.edit.tickRun; renderStage(); emit('sw', { k: id, on: S.edit.tickRun }); }
+      else if (id === 'louder') { S.louder = !S.louder; renderStage(); emit('sw', { k: id, on: S.louder }); }
+      else if (id === 'quiet') { S.quiet = !S.quiet; renderStage(); emit('sw', { k: id, on: S.quiet }); }
+      break; }
+    case 'ring': S.screen = 'done'; S.menu = null; renderStage(); emit('done-open'); break;
+    case 'back': S.screen = 'list'; renderStage(); emit('back'); break;
+    case 'bring': { const d = S.done.shift(); if (d) S.rems.push({ id: 'b' + d.id, title: d.title, grey: 'Nudge every 10 min', time: '07:55', grp: 'today' }); renderStage(); emit('bring'); break; }
+    case 'tab-rem': S.tab = 'rem'; S.screen = 'list'; renderStage(); emit('tab', 'rem'); break;
+    case 'tab-set': S.tab = 'set'; S.screen = 'list'; renderStage(); emit('tab', 'set'); break;
+    case 'pa': S.pausedAll = id === 'On' ? null : id; renderStage(); emit('pause-all', id); break;
+    case 'unpause': S.pausedAll = null; renderStage(); emit('unpause'); break;
+    case 'guide': S.screen = 'guide'; renderStage(); emit('guide'); break;
+    case 'news': S.screen = 'news'; renderStage(); emit('news'); break;
+    case 'p-nudge': S.lock = { n: 3, open: false }; renderStage(); emit('nudge'); break;
+    case 'nudge-done': S.lock = null; tickRem('pills'); emit('nudge-done'); break;
+    case 'nudge-later': S.lock = null; { const r = byId('pills'); if (r) { r.time = '08:10'; r.grp = 'today'; r.grey = 'Nudge every 10 min'; } } renderStage(); emit('nudge-later'); break;
+    default: break;
+  }
+}
+
+/* ---------- Lessons (see → try → check). Every step's setup resets what that step needs. ---------- */
+const LESSONS = [
+  { title: 'Your list', icon: 'bell', steps: [
+    { kind: 'look', head: 'Persistent Reminders', text: 'For the things you must not forget. A normal reminder tells you once and is gone. This one keeps nudging you, again and again, until you tick it off. The big title is orange, and the bell at the bottom is orange too. Below, the reminders stand in groups: \u201CWaiting for you\u201D (orange) holds the ones whose time has come, then come Today (blue), Tomorrow and Later.', target: 'title', setup: () => scene({}) },
+    { kind: 'look', head: 'One row', text: 'The circle, the title, and a small grey line. This one says “Nudging every 5 min · 3rd nudge”. On the right are the time and a small pencil: tap either to change the reminder.', target: 'row-pills', setup: () => scene({}) },
+    { kind: 'try', head: 'Tick one off', text: 'Tap the row “Take the blue pills”. Anywhere on the circle, the title or the grey line will do.', target: 'row-pills', setup: () => scene({}), wait: 'tick', when: d => d === 'pills', ok: 'On your iPhone you feel a short, happy buzz. The circle turns into a green tick and the reminder leaves the list. The number in the green button goes up by one.' },
+    { kind: 'try', head: 'Ticked by mistake?', text: 'A bar “Ticked off” has appeared at the bottom. Press “Undo”.', hint: 'In your real app the bar stays for 5 seconds. Here it waits for you.', target: 'undo-btn', setup: () => { scene({}); tickRem('pills'); S.toast = ''; }, wait: 'undo', ok: 'The reminder is back, just as it was.' },
+    { kind: 'look', head: 'The two round buttons', text: 'At the bottom left, the round orange button with a plus makes a new reminder. Beside it a small caption says “Hold to speak”. At the bottom right, the round green button shows the ring of today with the number you have done inside it. Tap it to open the list of what you ticked off.', target: 'ring', setup: () => scene({}) },
+    { kind: 'check', head: 'Quick check', text: 'A reminder stands in the orange group “Waiting for you”. What does that mean?', answers: ['Its time has come and it is nudging you now', 'It is paused', 'It repeats every day'], right: 0, ok: 'Right. Orange: the time has come and the reminder is nudging you.', setup: () => scene({}) },
+  ]},
+  { title: 'A new reminder', icon: 'plus', steps: [
+    { kind: 'try', head: 'The plus', text: 'Press the round orange plus.', target: 'plus', setup: () => scene({}), wait: 'edit-open', ok: 'The page “New reminder” opens with Cancel and Save. Cancel leaves without saving.' },
+    { kind: 'try', head: 'What is it?', text: 'Type what it is. For example: Book the dentist.', target: 'title-field', setup: () => scene({ screen: 'edit' }), wait: 'title-typed', robot: { type: 'type', value: 'Book the dentist' }, ok: 'Then choose when.' },
+    { kind: 'try', head: 'Quick buttons', text: 'Under “When” press “In 1 hour”.', hint: 'The four quick buttons: In 10 min, In 1 hour, This evening (19:00) and Tomorrow 8:00. Past 19:00, “This evening” becomes “Tomorrow evening”.', target: 'q1h', setup: () => scene({ screen: 'edit', edit: Object.assign(freshEdit(), { title: 'Book the dentist' }) }), wait: 'quick', when: d => d === 'q1h', ok: 'The time is set.' },
+    { kind: 'try', head: 'Repeat: on days', text: 'Repeat is a row of chips: Never, Daily, Weekly, Monthly, On days, Hours, Days. Press “On days”.', target: 'rp-On days', setup: () => scene({ screen: 'edit', edit: Object.assign(freshEdit(), { title: 'Water the plants', quick: 'qev' }) }), wait: 'repeat', when: d => d === 'On days', ok: 'Seven buttons appear: M T W T F S S. Tap the days you want.' },
+    { kind: 'try', head: 'Weekdays', text: 'Press the chip “Weekdays”.', target: 'wd-Weekdays', setup: () => scene({ screen: 'edit', edit: Object.assign(freshEdit(), { title: 'Water the plants', quick: 'qev', repeat: 'On days' }) }), wait: 'wdays', when: d => d === 'Weekdays', ok: 'Monday to Friday are picked at once. “Weekend” does the same for Saturday and Sunday. “Hours” repeats every few hours (1 to 12), “Days” every few days (1 to 30).' },
+    { kind: 'try', head: 'A colour', text: 'Because it repeats, a row of colour dots appears. Press the green one.', target: 'col-Green', setup: () => scene({ screen: 'edit', edit: Object.assign(freshEdit(), { title: 'Water the plants', quick: 'qev', repeat: 'On days', days: [0, 1, 2, 3, 4] }) }), wait: 'colour', when: d => d === 'Green', ok: 'The dot gets a ring. On the list, a repeating reminder with a colour stands in a frame of that colour, with a thin bar at the left. A one-off reminder never shows a colour.' },
+    { kind: 'try', head: 'Nudge me every', text: 'Under “Nudge me every” press “10 min”.', hint: 'The choices are 1, 5, 10, 15, 30 or 60 minutes. Under it you can also pick a sound for this reminder, and “Stop nudging at” a time.', target: 'ne-10', setup: () => scene({ screen: 'edit', edit: Object.assign(freshEdit(), { title: 'Book the dentist', quick: 'q1h' }) }), wait: 'nudge-every', when: d => d === 10, ok: 'It nudges you every 10 minutes until you tick it off.' },
+    { kind: 'try', head: 'Save', text: 'Press “Save”.', target: 'save', setup: () => scene({ screen: 'edit', edit: Object.assign(freshEdit(), { title: 'Book the dentist', quick: 'q1h', nudge: 10 }) }), wait: 'save', ok: 'The new reminder stands in its group. Under Today you find “Book the dentist”.' },
+  ]},
+  { title: 'Nudges and quick moves', icon: 'pulse', steps: [
+    { kind: 'try', head: 'The time comes', text: 'In the yellow practice strip press “08:00 arrives”.', hint: 'The yellow strip is only in this tour.', target: 'p-nudge', setup: () => scene({ practice: ['nudge'] }), wait: 'nudge', ok: 'The message shows on the lock screen: “Since 08:00 · 3rd nudge”. The first nudge comes at the exact time, then again every few minutes.' },
+    { kind: 'try', head: 'Press and hold the message', text: 'Press and hold the message.', hint: 'No long press? Right-click it.', target: 'nudge-card', setup: () => scene({ lock: { n: 3, open: false } }), wait: 'nudge-hold', robot: { type: 'rclick' }, ok: 'Buttons appear: Done and three “later” buttons. At first they are In 10 minutes, In 1 hour and This evening; you choose which three in Settings.' },
+    { kind: 'try', head: 'Done on the message', text: 'Press “Done”.', target: 'nb-done', setup: () => scene({ lock: { n: 3, open: true } }), wait: 'nudge-done', ok: 'Ticked off at once. You do not even have to open the app.' },
+    { kind: 'try', head: 'Slide a row to the left', text: 'Slide “Call the dentist” to the left. Press the little dashed hint.', hint: 'In your real app you swipe the row with a finger.', target: 'swipe-l', setup: () => scene({ hint: { id: 'dentist', dir: 'l' } }), wait: 'swipe-l', ok: 'Three buttons: red Delete, blue “Later” and purple “Pause”.' },
+    { kind: 'try', head: 'Later', text: 'Press “Later”.', target: 'act-later', setup: () => scene({ swipe: { id: 'dentist', dir: 'l' } }), wait: 'later-open', ok: 'A quick move: In 15 minutes, In 1 hour, Tonight 19:00 or Tomorrow 08:00.' },
+    { kind: 'try', head: 'In 1 hour', text: 'Press “In 1 hour”.', target: 'l1h', setup: () => scene({ swipe: { id: 'dentist', dir: 'l' }, menu: { kind: 'later', id: 'dentist' } }), wait: 'later', when: d => d === 'l1h', ok: 'The row moves to a later time. Slide a row to the right and you find green “Done”; a repeating one also has a grey “Skip”, which moves it on without counting it as done or late.' },
+    { kind: 'try', head: 'Say a reminder', text: 'Press and hold the round orange plus and say it.', hint: 'No long press? Right-click the plus. In this copy it “hears”: Call the dentist tomorrow at 3.', target: 'plus', setup: () => scene({}), wait: 'spoke', robot: { type: 'rclick' }, ok: 'Let go and the New reminder page opens, filled in with your words and the time. Check it and press Save. A short tap on the plus still opens an empty page.' },
+    { kind: 'check', head: 'Quick check', text: 'A nudge is ignored again and again. What does the switch “Nudge more often when I don’t react” (on at first) do?', answers: ['From the 4th nudge they come twice as often, with a stronger sound', 'It turns the nudges off after 3 tries', 'It sends the nudge to another phone'], right: 0, ok: 'Right. Never closer than 1 minute. Switch it off in Settings if you like them even.', setup: () => scene({}) },
+  ]},
+  { title: 'Done and Settings', icon: 'trophy', steps: [
+    { kind: 'try', head: 'The green ring', text: 'Press the round green button at the bottom right.', target: 'ring', setup: () => scene({}), wait: 'done-open', ok: 'The Done page opens.' },
+    { kind: 'look', head: 'A small celebration', text: 'At the top a green ring says, for example, “Nice work!” and “3 of 6 done today”. Below you find today and earlier days. Each line says “On time” or, for example, “After 3 nudges”, or “Skipped”. Lines older than 30 days tidy themselves away.', target: 'hero', setup: () => scene({ screen: 'done' }) },
+    { kind: 'try', head: 'Bring one back', text: 'Slide the first line to the left and press “Bring back”. Press the little dashed hint.', target: 'bring-btn', setup: () => scene({ screen: 'done' }), wait: 'bring', ok: 'It returns to the list with the time it had.' },
+    { kind: 'try', head: 'Settings', text: 'Press the purple “Settings” at the bottom right.', target: 'tab-set', setup: () => scene({}), wait: 'tab', when: d => d === 'set', ok: 'The Settings title is purple, like the mark at the bottom.' },
+    { kind: 'try', head: 'Pause all nudges', text: 'Under “Pause all nudges” press “Tomorrow”.', target: 'pa-Tomorrow', setup: () => scene({ tab: 'set' }), wait: 'pause-all', when: d => d === 'Tomorrow', ok: 'Every reminder is paused at once. Back on the list a purple line says \u201CNudges are paused until tomorrow 08:00.\u201D with a \u201CTurn on\u201D button. Nothing is lost: they start again at 08:00. The other choices are Weekend, Pick a day and Off.' },
+    { kind: 'look', head: 'The rest of Settings', text: '“Nudge more often when I don’t react” and Quiet hours (for example 22:00 to 07:00: no nudges between; what is still waiting nudges when they end). Then the three “later” buttons for a nudge, Your shortcuts, and “Keep it safe”: a copy in your iCloud, so your list comes back on a new iPhone.', target: 'quiet-row', setup: () => scene({ tab: 'set' }) },
+    { kind: 'try', head: 'What’s new', text: 'Open “What’s new”.', hint: '“How it works” above it is the guide to the whole app.', target: 'set-news', setup: () => scene({ tab: 'set' }), wait: 'news', ok: 'Every version, newest first. The version number stands at the bottom of Settings: AMS Persistent Reminder 0.5.2.' },
+  ]},
+  { title: 'Signs in this app', icon: 'flag', steps: [
+    { kind: 'look', head: 'Orange', text: 'The time has come and the reminder is nudging you. The circle, the small bell and the grey line turn orange, and the group “Waiting for you” is orange. The title and the bell at the bottom are orange too.', target: 'row-pills', setup: () => scene({}) },
+    { kind: 'look', head: 'Purple pause mark', text: 'Two short upright lines beside the grey line: this reminder is paused and does not nudge you until the time the line names. Purple is also the colour of the Pause button, of Settings and of nudges.', target: 'pause-mark', setup: () => scene({}) },
+    { kind: 'look', head: 'Circling arrows and colours', text: 'Small circling arrows beside the grey line: the reminder repeats. A colour (frame, thin bar at the left, circle and arrows): the colour you gave a repeating reminder.', target: 'row-plants', setup: () => scene({}) },
+    { kind: 'look', head: 'Blue map mark', text: 'A small blue map mark: the reminder starts when you arrive at or leave a place. Blue is also the Today group.', target: 'map-mark', setup: () => scene({}) },
+    { kind: 'look', head: 'Teal cloud', text: 'In Settings, the teal cloud stands for “Keep it safe”: the iCloud copy and the copy files.', target: 'cloud-row', setup: () => scene({ tab: 'set' }) },
+    { kind: 'check', head: 'Quick check', text: 'A small purple pause mark stands beside the grey line of a row. What does it mean?', answers: ['The reminder is paused until the time the line names', 'The reminder repeats', 'The reminder starts at a place'], right: 0, ok: 'Right. Repeats: circling arrows. A place: the blue map mark.', setup: () => scene({}) },
+  ]},
+];
+
+/* ---------- Tour engine (reusable) ---------- */
+let ci = 0, si = 0, solved = false, targetOff = false;
+const store = { get(k) { try { return localStorage.getItem(k) } catch { return null } }, set(k, v) { try { localStorage.setItem(k, v) } catch {} } };
+let doneChapters = new Set(JSON.parse(store.get(KEY + '-done') || '[]'));
+
+function emit(name, data) {
+  const st = LESSONS[ci]?.steps[si]; if (!st || solved || st.kind !== 'try') return;
+  if (st.on && st.on[name]) { markTarget(st.on[name]); }
+  if ((st.wait === name || st.alt === name) && (!st.when || st.when(data))) succeed(st.ok);
+}
+function succeed(msg) {
+  solved = true; targetOff = true; const fb = document.getElementById('fb'); if (fb) { fb.textContent = '✓ ' + msg; fb.className = 'feedback'; }
+  const nx = document.getElementById('next'); if (nx) { nx.disabled = false; nx.focus({ preventScroll: true }); }
+  markTarget();
+}
+let curTarget = null;
+function markTarget(t) {
+  if (t !== undefined) curTarget = t;
+  document.querySelectorAll('.target').forEach(e => e.classList.remove('target'));
+  if (!curTarget || targetOff) return;
+  const q = n => document.querySelector(`#stage [data-t="${CSS.escape(n)}"]`);
+  // If the thing to click is out of sight (a stray click closed a page), point at the way back to it.
+  const first = LESSONS[ci] && LESSONS[ci].steps[si] && LESSONS[ci].steps[si].target;
+  const el = q(curTarget) || (first && first !== curTarget ? q(first) : null) || (fallbackTarget() ? q(fallbackTarget()) : null);
+  if (el) { el.classList.add('target'); bringIntoView(el); }
+}
+function renderRail() {
+  const total = LESSONS.reduce((n, l) => n + l.steps.length, 0);
+  const before = LESSONS.slice(0, ci).reduce((n, l) => n + l.steps.length, 0) + si;
+  document.getElementById('rail').innerHTML = `<div class="brand">${brandHTML()}<div><h1>${TOUR_TITLE}</h1><small>${TOUR_SUB}</small></div></div>
+    ${LESSONS.map((l, i) => `<button class="chap ${i === ci ? 'cur' : ''} ${doneChapters.has(i) ? 'done' : ''}" data-ch="${i}">${icon(l.icon)}<span>${l.title}</span><span class="n">${doneChapters.has(i) ? '✓' : l.steps.length + ' steps'}</span></button>`).join('')}
+    <button class="chap ${ci === LESSONS.length ? 'cur' : ''}" data-ch="${LESSONS.length}">${icon(FINAL_ICON)}<span>${FINAL_LABEL}</span></button>
+    <div class="bar"><i style="width:${Math.round(100 * Math.min(before, total) / total)}%"></i></div>
+    <p class="railnote">${RAILNOTE}</p>`;
+}
+document.getElementById('rail').addEventListener('click', e => { const b = e.target.closest('[data-ch]'); if (b) goChapter(+b.dataset.ch); });
+
+function goChapter(i) {
+  ci = i; si = 0; clearTimers(); S = START();
+  const L = LESSONS[i]; if (L && L.setup) L.setup();
+  renderStep();
+}
+function renderStep() {
+  renderRail();
+  const coach = document.getElementById('coach'), fin = document.getElementById('finish');
+  if (ci >= LESSONS.length) { renderFinish(); coach.hidden = true; return; }
+  coach.hidden = false; fin.hidden = true;
+  const L = LESSONS[ci], st = L.steps[si];
+  solved = st.kind === 'look'; targetOff = false;
+  clearTimers();
+  if (st.setup) st.setup();
+  S.toast = '';
+  const kindName = { look: 'Look', try: 'Try it', check: 'Check' }[st.kind];
+  coach.innerHTML = `<div class="eyebrow">${icon(L.icon)} ${esc(L.title)} <span class="kind">· ${kindName} · step ${si + 1} of ${L.steps.length}</span></div>
+    <div><h2>${esc(st.head)}</h2><p>${esc(st.text)}</p>${st.hint ? `<p style="color:var(--muted);font-size:13px">${esc(st.hint)}</p>` : ''}</div>
+    <div class="btns">${ci + si > 0 ? '<button class="btn ghost" id="back">Back</button>' : ''}<button class="btn main-b" id="next" ${solved ? '' : 'disabled'}>${si === L.steps.length - 1 ? 'Finish chapter' : 'Next'}</button></div>
+    ${st.kind === 'check' ? `<div class="answers">${st.answers.map((a, i) => `<button class="ans" data-a="${i}">${esc(a)}</button>`).join('')}</div>` : ''}
+    <p class="feedback" id="fb"></p>`;
+  curTarget = st.target || null;
+  renderStage();
+  if (st.kind === 'check') coach.querySelectorAll('.ans').forEach(b => b.onclick = () => {
+    const fb = document.getElementById('fb');
+    if (+b.dataset.a === st.right) { coach.querySelectorAll('.ans').forEach(x => x.disabled = true); b.classList.add('right'); succeed(st.ok); }
+    else { b.classList.add('wrong'); fb.textContent = 'Not quite. Try another answer.'; fb.className = 'feedback no'; }
+  });
+  document.getElementById('next').onclick = next;
+  const bk = document.getElementById('back'); if (bk) bk.onclick = back;
+}
+function next() {
+  const L = LESSONS[ci];
+  if (si < L.steps.length - 1) { si++; renderStep(); return; }
+  doneChapters.add(ci); store.set(KEY + '-done', JSON.stringify([...doneChapters]));
+  goChapter(ci + 1);
+}
+function back() { if (si > 0) { si--; renderStep(); } else if (ci > 0) { goChapter(ci - 1); } }
+
+function renderFinish() {
+  const fin = document.getElementById('finish'); fin.hidden = false;
+  clearTimers(); S = START(); curTarget = null; renderStage();
+  let ticks = JSON.parse(store.get(KEY + '-real') || '[]');
+  fin.innerHTML = `<h3>${FINISH_TITLE}</h3>${FINISH_ITEMS.map((t, i) => `<label><input type="checkbox" id="real-${i}" ${ticks.includes(i) ? 'checked' : ''}><span>${esc(t)}</span></label>`).join('')}
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn main-b" id="again">Start the tour again</button></div>`;
+  fin.querySelectorAll('input').forEach((c, i) => c.onchange = () => { ticks = ticks.filter(x => x !== i); if (c.checked) ticks.push(i); store.set(KEY + '-real', JSON.stringify(ticks)); });
+  document.getElementById('again').onclick = () => goChapter(0);
+}
+
+
+const FINISH_ITEMS = ['Open Persistent on your iPhone (type “persistent” in the search). Look for the orange title and the group “Waiting for you”.',
+  'Press the orange plus, type something, press “In 10 min” and Save. Then wait for the nudge, press and hold it and press “Done”.',
+  'Press and hold the plus and say “remind me tomorrow at 3”. Check the page that opens.',
+  'Slide a row to the left and look at Later and Pause. Slide a repeating one to the right and look for Skip.',
+  'Press the green ring at the bottom right and read the line under “Nice work!”.',
+  'In Settings, look at Quiet hours and the three “later” buttons. Open What’s new.'];
+/* Fit the 390 x 760 pretend iPhone into its box */
+function fit() { const box = document.getElementById('stagebox'); document.getElementById('stage').style.transform = `scale(${box.clientWidth / 390})`; }
+new ResizeObserver(fit).observe(document.getElementById('stagebox'));
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if (S.menu) { S.menu = null; renderStage(); return; } if (S.screen === 'edit') { act('cancel'); return; } }
+  if (e.key === 'Enter' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') { const n = document.getElementById('next'); if (n && !n.disabled && document.activeElement !== n) n.click(); }
+});
+goChapter(0); fit();
+</script>
